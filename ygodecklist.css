@@ -1,0 +1,108 @@
+body:not(.state-noscript)    #noscript-box,
+body:not(.state-noasync)     #noasync-box,
+body:not(.state-choose)      #choose-box,
+body:not(.state-assign)      #assign-box,
+body:not(.state-namecorrect) #namecorrect-box
+{ display: none; }
+
+html, body { margin: 0; height: 100%; width: 100%; }
+body
+{
+    background: #cccccc;
+    font-family: Verdana, Geneva, sans-serif;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#choose-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    padding: 2vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    cursor: pointer;
+}
+
+#pdf-input
+{
+    margin-left: 2vw;
+    border: .25vmin solid #777;
+    padding: .5vmin;
+    border-radius: 1vmin;
+    background: #ccc;
+}
+#choose-box:hover #pdf-input { background: #ddd; }
+
+#assign-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    
+    padding: 2vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+
+#pdf-container
+{
+    position: relative;
+    border: .5vmin outset #000;
+    background: #fff;
+}
+
+.pdf-element
+{
+    position: absolute;
+    white-space: nowrap;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+}
+
+.pdf-element:not(.highlight) { opacity: .6; }
+
+.pdf-element.highlight
+{
+    padding: 1px;
+    border: 2px solid #000;
+    margin: -3px;
+}
+
+#assign-right-box
+{
+    width: 40vmin;
+    margin-left: 3vw;
+    
+    padding: 2vmin;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column;
+}
+
+#assign-log
+{
+    font-family: Monospace;
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    
+    margin-top: auto;
+    background: #bbb;
+    border: 1px solid #777;
+    padding: .5vmin;
+}
+
+#assign-log span { white-space: pre-wrap; }
