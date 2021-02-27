@@ -9,7 +9,14 @@
 
         <link rel="stylesheet" href="ygodecklist.css"    />
         
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans+Condensed:wght@300&display=swap" rel="stylesheet"> 
+        
+        <link rel="preload" href="img/loading.gif" as="image">
+        
+        <script defer src="https://yugiohdeck.github.io/compression.js"></script>
         <script defer src="include/pdf.js"></script>
+        <script defer src="carddata.js"></script>
         <script defer src="ygodecklist.js"></script>
     </head>
     
@@ -26,18 +33,36 @@
             </div>
             <div id="assign-right-box">
                 <div id="assign-controls">
-                    <select id="assign-alg">
-                        <option value="us-pdf">English decklist form</option>
-                        <option value="eu-pdf">EU localized form</option>
-                        <option value="latam-pdf">LatAm decklist form</option>
-                    </select>
-                    <input type="button" id="assign-parse" value="Parse">
+                    <div id="assign-main-buttons">
+                        <input type="button" id="assign-close" value="Close Deck">
+                        <input type="button" id="assign-next" value="Continue">
+                    </div>
+                    <div id="assign-parse-box">
+                        <select id="assign-alg">
+                            <option value="us-pdf">English decklist form</option>
+                            <option value="eu-pdf">EU localized form</option>
+                            <option value="latam-pdf">LatAm decklist form</option>
+                        </select>
+                        <input type="button" id="assign-parse" value="Parse">
+                    </div>
+                    <div id="assign-buttons-box">
+                        <b>Useful buttons:</b>
+                        <input type="button" id="assign-flip" value="Flip Extra & Side">
+                    </div>
                 </div>
                 <div id="assign-log">
                 </div>
             </div>
         </div>
         <div id="namecorrect-box">
+            <div id="nc-cards-container">
+            </div>
+            <div id="nc-controls">
+                <div id="nc-main-controls">
+                    <input type="button" id="nc-back" value="Go back">
+                    <input type="button" id="nc-decklist" value="Give me the decklist!">
+                </div>
+            </div>
         </div>
     </body>
     <script type="text/javascript">document.body.className = 'state-noasync'</script>

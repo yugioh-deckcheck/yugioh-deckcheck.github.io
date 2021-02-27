@@ -57,6 +57,8 @@ body
     position: relative;
     border: .5vmin outset #000;
     background: #fff;
+    height: 90vmin;
+    width: 69.5455vmin;
 }
 
 .pdf-element
@@ -90,19 +92,203 @@ body
     flex-direction: column;
 }
 
+#assign-controls
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    
+    flex-basis: 0;
+    flex-grow: 1;
+}
+
+#assign-controls > div
+{
+    padding: .5vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+#assign-controls > div + div { margin-top: 1vmin; }
+
+#assign-main-buttons
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+#assign-main-buttons > input
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    font-weight: bold;
+}
+#assign-close { background: #a00; }
+#assign-next { background: #0a0; }
+
+#assign-parse-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+#assign-alg { flex-grow: 1; }
+#assign-parse { margin-left: .1vw; }
+
+#assign-buttons-box
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+#assign-buttons-box > b { align-self: flex-start; margin-left: 2%; margin-bottom: 1%; }
+
 #assign-log
 {
     font-family: Monospace;
     
     display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+    flex-direction: column-reverse;
     align-items: flex-start;
     
     margin-top: auto;
     background: #bbb;
     border: 1px solid #777;
     padding: .5vmin;
+    
+    overflow-y: scroll;
+    
+    flex-basis: 0;
+    flex-grow: 1;
 }
 
 #assign-log span { white-space: pre-wrap; }
+#assign-log > :first-child { margin-bottom: auto; }
+
+#namecorrect-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    
+    padding: 1vh 1vw;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    width: 93vw;
+    height: 93vh;
+}
+
+#nc-cards-container
+{
+    font-family: 'Open Sans Condensed', sans-serif;
+    font-size: 80%;
+    
+    overflow-y: auto;
+
+    padding: 1vmin;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    flex-grow: 1;
+}
+
+.nc-card-box
+{
+    display: inline-flex;
+    flex-direction: column-reverse;
+    
+    width: 6vw;
+    height: 6vw;
+    margin: .5vw;
+    border-radius: .5vw;
+    border: .2vw solid #777;
+    
+    background-color: #aaa;
+    background-position: center 15%;
+    background-size: 100% auto;
+    background-repeat: no-repeat;
+}
+.nc-card-box.needadj { background: #a00; }
+
+.nc-orig-text
+{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 2% 1% 4%;
+    padding: 0% 3%;
+    background: rgba(190,190,190,0.8);
+}
+.nc-card-box.needadj .nc-orig-text { text-decoration: line-through; }
+
+.nc-adj-text
+{
+    margin: 2% 1%;
+    padding: 0% 3%;
+}
+.nc-card-box:not(.needadj) .nc-adj-text { display: none; }
+
+.nc-search-results
+{
+    flex-grow: 1;
+    margin: 1%;
+    
+    background: #ccc;
+    border-radius: .5vw;
+    border: .2vw solid #777;
+    
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    
+    justify-content: flex-start;
+    align-items: stretch;
+}
+.nc-card-box.matched .nc-search-results { display: none; }
+
+.nc-search-results.loading
+{
+    justify-content: center;
+    align-items: center;
+}
+
+.nc-load-icon
+{
+    width: 30%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+}
+
+.nc-search-results:not(.loading) .nc-load-icon,
+.nc-search-results:not(.loading) .nc-load-text
+{ display: none; }
+
+#nc-controls
+{
+    flex-basis: 18vw;
+    flex-grow: 0;
+    margin-left: 1vw;
+    
+    padding: 1vmin;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+
+#nc-main-controls
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+#nc-main-controls > input
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    font-weight: bold;
+}
+#nc-back { background: #a00; }
+#nc-decklist { background: #0a0; }
