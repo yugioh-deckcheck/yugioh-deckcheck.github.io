@@ -213,8 +213,14 @@ const assignParse = function()
     if (parser)
     {
         Log(logger, 'Now parsing using \''+alg+'\'.');
-        CURRENT_ASSIGNMENT = parser(document.getElementById('pdf-container'));
-        Log(logger, 'Done parsing.');
+        try
+        {
+            CURRENT_ASSIGNMENT = parser(document.getElementById('pdf-container'));
+            Log(logger, 'Done parsing.');
+        } catch (e) {
+            Log(logger, ('\''+alg+'\' parsing failed.'), 'warn');
+            CURRENT_ASSIGNMENT = null;
+        }
     }
     else
         CURRENT_ASSIGNMENT = null;
@@ -424,7 +430,6 @@ document.getElementById('nc-decklist').addEventListener('click', async () =>
         promises[box.which].push(GetPasscodeFor(box.match[1]).then((c) => [c,box.count]));
     }
     const [main, extra, side] = await Promise.all([Promise.all(promises.main), Promise.all(promises.extra), Promise.all(promises.side)]);
-    console.log(main,extra,side);
     const [mainC, extraC, sideC] = [CompressDeckData(main), CompressDeckData(extra), CompressDeckData(side)];
     
     let tag = mainC;
@@ -459,7 +464,6 @@ document.getElementById('pdf-input').addEventListener('change', async function()
         PDFJS.GlobalWorkerOptions.workerSrc = 'include/pdf.worker.js';
         const pdf = await PDFJS.getDocument(file).promise;
         const page = await pdf.getPage(1);
-        console.log(pdf,page);
         
         const container = document.getElementById('pdf-container');
         while (container.lastElementChild)
@@ -492,7 +496,6 @@ document.getElementById('pdf-input').addEventListener('change', async function()
                 continue;
             if (!item.fieldValue)
                 continue;
-            console.log(item);
             const box = document.createElement('span');
             box.className = 'pdf-element';
             const padding = item.borderStyle.dashArray[0];
