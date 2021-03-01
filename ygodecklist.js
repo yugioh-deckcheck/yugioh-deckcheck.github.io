@@ -13,7 +13,7 @@ let Log = ((box, msg, cls) =>
 const logger = document.getElementById('assign-log');
 
 // object with three keys - main, side, extra
-// each value is an array of two element arrays [countText, nameText], countText can be null
+// each value is an array of two element arrays [countText, nameText], countText can be falsey
 let CURRENT_ASSIGNMENT = null;
 
 const drawSingle = function(assignment, hueMin, hueMax)
@@ -25,7 +25,7 @@ const drawSingle = function(assignment, hueMin, hueMax)
     for (const [countText, nameText] of assignment)
     {
         const color = ('hsl('+(hue+=step)+',100%,50%)');
-        if (countText !== null)
+        if (countText)
         {
             countText.classList.add('highlight');
             countText.style.borderColor = color;
@@ -52,95 +52,70 @@ const elmToCount = ((countElm) =>
 {
     if (countElm)
     {
-        const n = parseInt(countElm.item.str);
+        const n = parseInt(countElm.info.str);
         if (!isNaN(n))
             return n;
     }
     return 1;
 });
 
-const autodetect = function(container)
-{
-    return 'us-pdf';
-};
-
 const cmp = {
-    topItemsFirst: ((a,b) => (b.item.bottom-a.item.bottom)),
-    leftItemsFirst: ((a,b) => (a.item.left-b.item.left)),
+    topItemsFirst: ((a,b) => (b.info.bottom-a.info.bottom)),
+    leftItemsFirst: ((a,b) => (a.info.left-b.info.left)),
 };
 const parsers = {
-    'eu-pdf': ((pdf) =>
+    'pdf-editable': ((pdf) =>
     {
         const elms = Array.from(pdf.children);
-        const labels = elms.filter((e) => (e.item.str.trim().startsWith('<<<')));
-        if (labels.length !== 5)
-            throw ('Expected 5 labels, got '+labels.length);
-        // sort by y coordinate
-        labels.sort(cmp.topItemsFirst);
-        // top 3 are monster/spell/trap
-        const [monLabel, spellLabel, trapLabel] = [labels[0],labels[1],labels[2]].sort(cmp.leftItemsFirst);
-        // bottom 2 are side/extra
-        const [sideLabel, extraLabel] = [labels[3],labels[4]].sort(cmp.leftItemsFirst);
-        
-        const findLeft = ((elm,maxOff) =>
+        const anns = {};
+        for (const elm of elms)
         {
-            const left = elms.filter((e) => ((Math.abs(elm.item.bottom-e.item.bottom)*3 < elm.item.height) && (e.item.left < elm.item.left)));
-            if (!left.length)
-                return null;
-            if (left.length > 1)
-                left.sort(cmp.leftItemsFirst);
-            const target = left[left.length-1];
-            if (!isNaN(maxOff) && (target.item.left < (elm.item.left-maxOff)))
-                return null;
-            return target;
-        });
-        const parseFromLabel = ((type,label,cutoff) =>
-        {
-            const countElm = findLeft(label);
-            const count = (countElm ? parseInt(countElm.item.str) : 0);
+            const ann = elm.annotation;
+            if (!ann)
+                continue;
+            if (ann)
+                anns[ann.fieldName] = elm;
+        }
+        const parseSingle = ((type,tag,totalName) => {
+            const countElm = anns[totalName];
+            if (!countElm) throw ('Missing total elm: '+totalName);
+            const count = parseInt(countElm.info.str);
             if (count)
                 Log(logger, ('Total '+type+' count appears to be '+count.toString().padStart(2)+'.'));
             else
-                Log(logger, ('Could not find total '+type+' count.'), 'warn');
+                Log(logger, ('Count not find total '+type+' count.'), 'warn');
             
-            const minY = label.item.bottom;
-            const maxY = minY + cutoff;
-            
-            let cards = elms.filter((e) => ((Math.abs(label.item.left-e.item.left)*1 < label.item.height) && (minY < e.item.bottom) && (e.item.bottom < maxY)));
-            
-            if (count)
-                cards = cards.map((e) => [findLeft(e,(e.item.left-countElm.item.left)*1.25), e]);
-            else
-                cards = cards.map((e) => [findLeft(e,e.width*1.5), e]);
-
-            if (count)
+            let res = [];
+            let total = 0;
+            for (let i=1; i<60; ++i)
             {
-                let total = 0;
-                for (const [countElm,cardElm] of cards)
-                    total += elmToCount(countElm);
-
-                if (total === count)
-                    Log(logger, ('Total '+type+' count is '+count+'. Check OK.'));
-                else
-                    Log(logger, ('Total '+type+' expected '+count+', but found '+total+'.'), 'error');
+                const cardNameElm = anns[tag+' '+i+' Name'];
+                if (!cardNameElm)
+                    continue;
+                const cardNumElm = anns[tag+' '+i+' Number'];
+                res.push([cardNumElm, cardNameElm]);
+                total += elmToCount(cardNumElm);
             }
-            
-            return cards;
+            if (total === count)
+                Log(logger, ('Total '+type+' count is '+count+'. Check OK.'));
+            else
+                Log(logger, ('Total '+type+' expected '+count+', but found '+total+'.'), 'error');
+            return res;
         });
-        const cutoff = (monLabel.item.bottom-sideLabel.item.bottom);
+        
         return {
-            main:  parseFromLabel('Monster', monLabel, cutoff*1.2).concat(
-                       parseFromLabel('Spell  ', spellLabel, cutoff*1.2),
-                       parseFromLabel('Trap   ', trapLabel, cutoff*1.2)
+            main:  parseSingle('Monster','Mon','Total Mon Cards').concat(
+                       parseSingle('Spell  ','Spell','Total Spell Cards'),
+                       parseSingle('Trap   ','Trap','Total Trap Cards')
                    ),
-            side:  parseFromLabel('Side   ', sideLabel, cutoff),
-            extra: parseFromLabel('Extra  ', extraLabel, cutoff),
+            side:  parseSingle('Side   ','Side','Total Side Number'),
+            extra: parseSingle('Extra  ','Extra','Total Extra Deck'),
         };
     }),
-    'us-pdf': ((pdf) =>
+    'pdf-text': ((pdf) =>
     {
         const elms = Array.from(pdf.children);
-        const labels = elms.filter((e) => (e.item.str.trim().startsWith('<<<')));
+        const labels = elms.filter((e) => (e.info.str.trim().startsWith('<<<')));
         if (labels.length !== 5)
             throw ('Expected 5 labels, got '+labels.length);
         // sort by y coordinate
@@ -152,32 +127,32 @@ const parsers = {
         
         const findLeft = ((elm,maxOff) =>
         {
-            const left = elms.filter((e) => ((Math.abs(elm.item.bottom-e.item.bottom)*3 < elm.item.height) && (e.item.left < elm.item.left)));
+            const left = elms.filter((e) => ((Math.abs(elm.info.bottom-e.info.bottom)*3 < elm.info.height) && (e.info.left < elm.info.left)));
             if (!left.length)
                 return null;
             if (left.length > 1)
                 left.sort(cmp.leftItemsFirst);
             const target = left[left.length-1];
-            if (!isNaN(maxOff) && (target.item.left < (elm.item.left-maxOff)))
+            if (!isNaN(maxOff) && (target.info.left < (elm.info.left-maxOff)))
                 return null;
             return target;
         });
         const parseFromLabel = ((type,label,cutoff,leftLabel) =>
         {
             const countElm = findLeft(label);
-            const count = (countElm ? parseInt(countElm.item.str) : 0);
+            const count = (countElm ? parseInt(countElm.info.str) : 0);
             if (count)
                 Log(logger, ('Total '+type+' count appears to be '+count.toString().padStart(2)+'.'));
             else
                 Log(logger, ('Could not find total '+type+' count.'), 'warn');
             
-            const minY = label.item.bottom;
+            const minY = label.info.bottom;
             const maxY = minY + cutoff;
             
-            let cards = elms.filter((e) => ((Math.abs(leftLabel.item.left-e.item.left)*1 < leftLabel.item.height) && (minY < e.item.bottom) && (e.item.bottom < maxY)));
+            let cards = elms.filter((e) => ((Math.abs(leftLabel.info.left-e.info.left)*1 < leftLabel.info.height) && (minY < e.info.bottom) && (e.info.bottom < maxY)));
             
             if (count)
-                cards = cards.map((e) => [findLeft(e,(e.item.left-countElm.item.left)*1.25), e]);
+                cards = cards.map((e) => [findLeft(e,(e.info.left-countElm.info.left)*1.25), e]);
             else
                 cards = cards.map((e) => [findLeft(e,e.width*1.5), e]);
 
@@ -195,7 +170,7 @@ const parsers = {
             
             return cards;
         });
-        const cutoff = (monLabel.item.bottom-sideLabel.item.bottom);
+        const cutoff = (monLabel.info.bottom-sideLabel.info.bottom);
         return {
             main:  parseFromLabel('Monster', monLabel, cutoff*1.2, monLabel).concat(
                        parseFromLabel('Spell  ', spellLabel, cutoff*1.2, spellLabel),
@@ -206,27 +181,20 @@ const parsers = {
         };
     }),
 };
-const assignParse = function()
+document.getElementById('assign-parse').addEventListener('click', () =>
 {
     const alg = document.getElementById('assign-alg').value;
-    const parser = parsers[alg];
-    if (parser)
+    Log(logger, 'Now parsing using \''+alg+'\'.');
+    try
     {
-        Log(logger, 'Now parsing using \''+alg+'\'.');
-        try
-        {
-            CURRENT_ASSIGNMENT = parser(document.getElementById('pdf-container'));
-            Log(logger, 'Done parsing.');
-        } catch (e) {
-            Log(logger, ('\''+alg+'\' parsing failed.'), 'warn');
-            CURRENT_ASSIGNMENT = null;
-        }
-    }
-    else
+        CURRENT_ASSIGNMENT = parsers[alg](document.getElementById('pdf-container'));
+        Log(logger, 'Done parsing.');
+    } catch (e) {
+        Log(logger, ('\''+alg+'\' parsing failed.'), 'warn');
         CURRENT_ASSIGNMENT = null;
+    }
     drawAssignment();
-};
-document.getElementById('assign-parse').addEventListener('click', assignParse);
+});
 
 document.getElementById('assign-flip').addEventListener('click', () =>
 {
@@ -250,7 +218,7 @@ document.getElementById('assign-close').addEventListener('click', () =>
     document.body.className = 'state-choose';
 });
 
-const remapSingle = (([countElm, nameElm]) => [elmToCount(countElm), nameElm.item.str.trim()]);
+const remapSingle = (([countElm, nameElm]) => [elmToCount(countElm), nameElm.info.str.trim()]);
 const assignmentRemap = ((ass) =>
 {
     return {
@@ -273,19 +241,74 @@ document.getElementById('assign-next').addEventListener('click', () =>
     window.NamecorrectSetup(assignmentRemap(CURRENT_ASSIGNMENT));
 });
 
-window.AssignPageSetup = function()
+window.AssignPageSetup = function(width, height, textContent, annotations)
 {
-    // try to autodetect the type of pdf
-    const pdfType = autodetect(document.getElementById('pdf-container'));
-    if (pdfType)
+    const container = document.getElementById('pdf-container');
+    while (container.lastElementChild)
+        container.removeChild(container.lastElementChild);
+    
+    // we normalize the container to always be 90vmin in content height
+    // this is the scaling factor of page pixels to vmin
+    const scalingFactor = (90/height);
+    container.style.width = ((width*scalingFactor)+'vmin');
+    
+    // render text boxes
+    console.log(textContent.items);
+    for (const item of textContent.items)
     {
-        document.getElementById('assign-alg').value = pdfType;
-        Log(logger, 'Auto-detected form type: \''+pdfType+'\'.');
-        assignParse();
+        const box = document.createElement('span');
+        box.className = 'pdf-element';
+        box.style.left = ((item.transform[4]*scalingFactor)+'vmin');
+        box.style.bottom = ((item.transform[5]*scalingFactor)+'vmin');
+        box.style.fontFamily = (item.fontName + ', ' + textContent.styles[item.fontName].fontFamily);
+        box.style.fontSize = ((item.transform[0]*scalingFactor)+'vmin');
+        box.innerText = item.str;
+        box.info = { str: item.str, left: item.transform[4], bottom: item.transform[5], height: item.transform[0] };
+        container.appendChild(box);
     }
-    else
+    
+    // render annotations
+    console.log(annotations);
+    for (const item of annotations)
     {
-        Log(logger, 'Could not autodetect form type.', 'warn');
+        if (item.fieldType !== 'Tx')
+            continue;
+        if (!item.fieldValue)
+            continue;
+        const box = document.createElement('span');
+        box.className = 'pdf-element';
+        const padding = item.borderStyle.dashArray[0];
+        box.info = { str: item.fieldValue, left: item.rect[0]+padding, bottom: item.rect[1]+padding, height: (item.rect[3]-item.rect[1])-2*padding, width: (item.rect[2]-item.rect[0])-2*padding };
+        box.annotation = item;
+        box.style.left = ((box.info.left*scalingFactor)+'vmin');
+        box.style.bottom = ((box.info.bottom*scalingFactor)+'vmin');
+        box.style.width = ((box.info.width*scalingFactor)+'vmin');
+        box.style.height = ((box.info.height*scalingFactor)+'vmin');
+        box.style.fontFamily = 'Helvetica, Arial, sans-serif;';
+        box.style.fontSize = ((box.info.height*scalingFactor)+'vmin');
+        box.innerText = item.fieldValue;
+        container.appendChild(box);
+    }
+    // try to autodetect the type of pdf
+    found : {
+        for (const pdfType in parsers)
+        {
+            try
+            {
+                CURRENT_ASSIGNMENT = parsers[pdfType](container);
+                drawAssignment();
+                Log(logger, 'Successfully auto-detected form type: \''+pdfType+'\'.');
+                document.getElementById('assign-alg').value = pdfType;
+                break found;
+            } catch (e) {
+                console.error(pdfType, e);
+                while (logger.lastElementChild)
+                    logger.removeChild(logger.lastElementChild);
+            }
+        }
+        Log(logger, 'Failed to auto-detect form type.', 'warn');
+        CURRENT_ASSIGNMENT = null;
+        drawAssignment();
     }
 };
 
@@ -464,53 +487,8 @@ document.getElementById('pdf-input').addEventListener('change', async function()
         PDFJS.GlobalWorkerOptions.workerSrc = 'include/pdf.worker.js';
         const pdf = await PDFJS.getDocument(file).promise;
         const page = await pdf.getPage(1);
-        
-        const container = document.getElementById('pdf-container');
-        while (container.lastElementChild)
-            container.removeChild(container.lastElementChild);
-        
-        // we normalize the container to always be 90vmin in content height
-        // this is the scaling factor of page pixels to vmin
-        const scalingFactor = (90/page.view[3]);
-        container.style.width = ((page.view[2]*scalingFactor)+'vmin');
-        
-        // render text boxes
-        const textContent = await page.getTextContent();
-        for (const item of textContent.items)
-        {
-            const box = document.createElement('span');
-            box.className = 'pdf-element';
-            box.style.left = ((item.transform[4]*scalingFactor)+'vmin');
-            box.style.bottom = ((item.transform[5]*scalingFactor)+'vmin');
-            box.style.fontFamily = (item.fontName + ', ' + textContent.styles[item.fontName].fontFamily);
-            box.style.fontSize = ((item.transform[0]*scalingFactor)+'vmin');
-            box.innerText = item.str;
-            box.item = { str: item.str, left: item.transform[4], bottom: item.transform[5], height: item.transform[0] };
-            container.appendChild(box);
-        }
-        
-        const annotations = await page.getAnnotations();
-        for (const item of annotations)
-        {
-            if (item.fieldType !== 'Tx')
-                continue;
-            if (!item.fieldValue)
-                continue;
-            const box = document.createElement('span');
-            box.className = 'pdf-element';
-            const padding = item.borderStyle.dashArray[0];
-            box.item = { str: item.fieldValue, left: item.rect[0]+padding, bottom: item.rect[1]+padding, height: (item.rect[3]-item.rect[1])-2*padding, width: (item.rect[2]-item.rect[0])-2*padding };
-            box.style.left = ((box.item.left*scalingFactor)+'vmin');
-            box.style.bottom = ((box.item.bottom*scalingFactor)+'vmin');
-            box.style.width = ((box.item.width*scalingFactor)+'vmin');
-            box.style.height = ((box.item.height*scalingFactor)+'vmin');
-            box.style.fontFamily = 'Helvetica, Arial, sans-serif;';
-            box.style.fontSize = ((box.item.height*scalingFactor)+'vmin');
-            box.innerText = item.fieldValue;
-            container.appendChild(box);
-        }
-        
-        window.AssignPageSetup();
+        const [textContent, annotations] = await Promise.all([page.getTextContent(), page.getAnnotations()]);
+        window.AssignPageSetup(page.view[2], page.view[3], textContent, annotations);
     } catch (e) {
         console.error(e);
         Log(logbox, 'Failed: '+e, 'error');
