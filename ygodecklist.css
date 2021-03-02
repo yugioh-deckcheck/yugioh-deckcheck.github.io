@@ -200,7 +200,7 @@ body
     display: inline-flex;
     flex-direction: column-reverse;
     
-    width: 6vw;
+    width: 8.2vw;
     height: 6vw;
     margin: .5vw;
     border-radius: .5vw;
@@ -208,7 +208,7 @@ body
     
     background-color: #aaa;
     background-position: center 15%;
-    background-size: 100% auto;
+    background-size: 6vw auto;
     background-repeat: no-repeat;
 }
 .nc-card-box.needadj { background: #a00; }
@@ -220,7 +220,8 @@ body
     text-overflow: ellipsis;
     margin: 2% 1% 4%;
     padding: 0% 3%;
-    background: rgba(190,190,190,0.8);
+    background: rgba(190,190,190,0.9);
+    text-align: center;
 }
 .nc-card-box.needadj .nc-orig-text { text-decoration: line-through; }
 
@@ -228,12 +229,14 @@ body
 {
     margin: 2% 1%;
     padding: 0% 3%;
+    text-align: center;
 }
-.nc-card-box:not(.needadj) .nc-adj-text { display: none; }
+.nc-card-box:not(.needadj.with-edit-box) .nc-adj-text { display: none; }
 
 .nc-search-results
 {
     flex-grow: 1;
+    flex-basis: 0;
     margin: 1%;
     
     background: #ccc;
@@ -242,23 +245,71 @@ body
     
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow: hidden;
     
-    justify-content: flex-start;
-    align-items: stretch;
-}
-.nc-card-box.matched .nc-search-results { display: none; }
-
-.nc-search-results.loading
-{
     justify-content: center;
     align-items: center;
 }
+.nc-card-box.matched .nc-search-results { display: none; }
+
+.nc-search-results-container
+{
+    max-width: 100%;
+    flex-grow: 1;
+    overflow-y: auto;
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+}
+.nc-search-results:not(.has-results) .nc-search-results-container { display: none; }
+
+.nc-search-result
+{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    
+    padding: 0 .3vw;
+    cursor: pointer;
+}
+.nc-search-result:hover
+{
+    background: rgba(0,0,0,0.3);
+}
+
+.nc-search-result-flag
+{
+    display: block;
+    width: 10%;
+    height: auto;
+}
+
+.nc-search-result-name
+{
+    flex-grow: 1;
+    margin-left: 3%;
+    
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nc-search-results-other
+{
+    padding: 0 .3vw;
+    cursor: pointer;
+    align-self: stretch;
+}
+.nc-search-results-other:hover { background: rgba(0,0,0,0.3); }
+.nc-search-results.loading .nc-search-results-other { display: none; }
+.nc-card-box.with-edit-box .nc-search-results-other { display: none; }
 
 .nc-load-icon
 {
-    width: 30%;
-    height: auto;
+    width: 1.8vw;
+    height: 1.8vw;
     aspect-ratio: 1 / 1;
 }
 

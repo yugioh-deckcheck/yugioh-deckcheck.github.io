@@ -22,7 +22,7 @@ const drawSingle = function(assignment, hueMin, hueMax)
         return;
     const step = ((hueMax-hueMin)/(assignment.length));
     let hue = (hueMin-(step/2));
-    for (const [countText, nameText] of assignment)
+    for (const [countText, nameTexts] of assignment)
     {
         const color = ('hsl('+(hue+=step)+',100%,50%)');
         if (countText)
@@ -30,8 +30,11 @@ const drawSingle = function(assignment, hueMin, hueMax)
             countText.classList.add('highlight');
             countText.style.borderColor = color;
         }
-        nameText.classList.add('highlight');
-        nameText.style.borderColor = color;
+        for (const nameText of nameTexts)
+        {
+            nameText.classList.add('highlight');
+            nameText.style.borderColor = color;
+        }
     }
 };
 
@@ -74,7 +77,7 @@ const parsers = {
             if (!ann)
                 continue;
             if (ann)
-                anns[ann.fieldName] = elm;
+                anns[ann.fieldName.toLowerCase()] = elm;
         }
         const parseSingle = ((type,tag,totalName) => {
             const countElm = anns[totalName];
@@ -89,11 +92,11 @@ const parsers = {
             let total = 0;
             for (let i=1; i<60; ++i)
             {
-                const cardNameElm = anns[tag+' '+i+' Name'];
+                const cardNameElm = anns[tag+' '+i+' name'];
                 if (!cardNameElm)
                     continue;
-                const cardNumElm = anns[tag+' '+i+' Number'];
-                res.push([cardNumElm, cardNameElm]);
+                const cardNumElm = anns[tag+' '+i+' number'];
+                res.push([cardNumElm, [cardNameElm]]);
                 total += elmToCount(cardNumElm);
             }
             if (total === count)
@@ -104,20 +107,30 @@ const parsers = {
         });
         
         return {
-            main:  parseSingle('Monster','Mon','Total Mon Cards').concat(
-                       parseSingle('Spell  ','Spell','Total Spell Cards'),
-                       parseSingle('Trap   ','Trap','Total Trap Cards')
+            main:  parseSingle('Monster','mon','total mon cards').concat(
+                       parseSingle('Spell  ','spell','total spell cards'),
+                       parseSingle('Trap   ','trap','total trap cards')
                    ),
-            side:  parseSingle('Side   ','Side','Total Side Number'),
-            extra: parseSingle('Extra  ','Extra','Total Extra Deck'),
+            side:  parseSingle('Side   ','side','total side number'),
+            extra: parseSingle('Extra  ','extra','total extra deck'),
         };
     }),
     'pdf-text': ((pdf) =>
     {
         const elms = Array.from(pdf.children);
-        const labels = elms.filter((e) => (e.info.str.trim().startsWith('<<<')));
+        let labels = elms.filter((e) => (e.info.str.trim().startsWith('<<<')));
         if (labels.length !== 5)
-            throw ('Expected 5 labels, got '+labels.length);
+        {
+            if (labels.length)
+                throw ('Failed to find labels. Expected 5 labels, got '+labels.length);
+            Log(logger, 'Falling back to single-glyph parsing.');
+            labels = elms.filter((e) => (e.info.str === '<'));
+            if (labels.length !== 15)
+                throw ('Fallback failed. Expected 15 \'<\' characters, got '+labels.length);
+            labels.sort(cmp.topItemsFirst);
+            labels.sort(cmp.leftItemsFirst);
+            labels = [labels[0], labels[3], labels[6], labels[9], labels[12]];
+        }
         // sort by y coordinate
         labels.sort(cmp.topItemsFirst);
         // top 3 are monster/spell/trap
@@ -127,15 +140,42 @@ const parsers = {
         
         const findLeft = ((elm,maxOff) =>
         {
-            const left = elms.filter((e) => ((Math.abs(elm.info.bottom-e.info.bottom)*3 < elm.info.height) && (e.info.left < elm.info.left)));
+            if (isNaN(maxOff))
+                maxOff = 0;
+            const sign = (maxOff >= 0) ? 1 : -1;
+            const left = elms.filter((e) => ((Math.abs(elm.info.bottom-e.info.bottom)*3 < elm.info.height) && (Math.sign(elm.info.left-e.info.left) === sign)));
             if (!left.length)
                 return null;
             if (left.length > 1)
                 left.sort(cmp.leftItemsFirst);
-            const target = left[left.length-1];
-            if (!isNaN(maxOff) && (target.info.left < (elm.info.left-maxOff)))
-                return null;
-            return target;
+            if (maxOff >= 0)
+            {
+                const target = left[left.length-1];
+                if (maxOff && (target.info.left < (elm.info.left-maxOff)))
+                    return null;
+                return target;
+            }
+            else
+            {
+                const target = left[0];
+                if (elm.info.left-maxOff < target.info.left)
+                    return null;
+                return target;
+            }
+        });
+        const findExtras = ((e) =>
+        {
+            let es = [e];
+            while (true)
+            {
+                const el = findLeft(e, Number.NEGATIVE_INFINITY);
+                if (!el)
+                    break;
+                if ((e.offsetLeft + e.offsetWidth) < (el.offsetLeft-10))
+                    break;
+                es.push((e = el));
+            }
+            return es;
         });
         const parseFromLabel = ((type,label,cutoff,leftLabel) =>
         {
@@ -152,9 +192,9 @@ const parsers = {
             let cards = elms.filter((e) => ((Math.abs(leftLabel.info.left-e.info.left)*1 < leftLabel.info.height) && (minY < e.info.bottom) && (e.info.bottom < maxY)));
             
             if (count)
-                cards = cards.map((e) => [findLeft(e,(e.info.left-countElm.info.left)*1.25), e]);
+                cards = cards.map((e) => [findLeft(e,(e.info.left-countElm.info.left)*1.25), findExtras(e)]);
             else
-                cards = cards.map((e) => [findLeft(e,e.width*1.5), e]);
+                cards = cards.map((e) => [findLeft(e,e.width*1.5), findExtras(e)]);
 
             if (count)
             {
@@ -172,9 +212,9 @@ const parsers = {
         });
         const cutoff = (monLabel.info.bottom-sideLabel.info.bottom);
         return {
-            main:  parseFromLabel('Monster', monLabel, cutoff*1.2, monLabel).concat(
-                       parseFromLabel('Spell  ', spellLabel, cutoff*1.2, spellLabel),
-                       parseFromLabel('Trap   ', trapLabel, cutoff*1.2, trapLabel)
+            main:  parseFromLabel('Monster', monLabel, cutoff*1.05, monLabel).concat(
+                       parseFromLabel('Spell  ', spellLabel, cutoff*1.05, spellLabel),
+                       parseFromLabel('Trap   ', trapLabel, cutoff*1.05, trapLabel)
                    ),
             side:  parseFromLabel('Side   ', sideLabel, cutoff, monLabel),
             extra: parseFromLabel('Extra  ', extraLabel, cutoff, spellLabel),
@@ -218,7 +258,7 @@ document.getElementById('assign-close').addEventListener('click', () =>
     document.body.className = 'state-choose';
 });
 
-const remapSingle = (([countElm, nameElm]) => [elmToCount(countElm), nameElm.info.str.trim()]);
+const remapSingle = (([countElm, nameElms]) => [elmToCount(countElm), nameElms.map((elm) => elm.info.str.trim()).join(' ')]);
 const assignmentRemap = ((ass) =>
 {
     return {
@@ -297,11 +337,11 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
             {
                 CURRENT_ASSIGNMENT = parsers[pdfType](container);
                 drawAssignment();
-                Log(logger, 'Successfully auto-detected form type: \''+pdfType+'\'.');
+                Log(logger, 'Auto-detected form type: \''+pdfType+'\'.');
                 document.getElementById('assign-alg').value = pdfType;
                 break found;
             } catch (e) {
-                console.error(pdfType, e);
+                console.warn(pdfType+' failed to parse:', e);
                 while (logger.lastElementChild)
                     logger.removeChild(logger.lastElementChild);
             }
@@ -315,43 +355,149 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
 })(); /* ASSIGMENT PAGE LOGIC END */
 
 /* NAMECORRECT PAGE LOGIC START */ (()=>{
+
+const distanceScore = ((a,b,cutoff) =>
+{
+    const lenA = a.length, lenB = b.length;
+    const lenDelta = Math.abs(lenA-lenB);
     
-const insensitive = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
-const insensitiveEqual = ((a,b) => (insensitive(a) === insensitive(b)));
+    if (a === b)
+        return 0;
+    
+    if (b.includes(a))
+        return 1-lenA/lenB;
+        
+    if (lenDelta >= cutoff)
+        return cutoff;
+
+    let data = Array(lenA+1).fill().map(() => Array(lenB+1));
+    for (let i=0; i <= lenA; ++i)
+        data[i][0] = i;
+    for (let j=0; j <= lenB; ++j)
+        data[0][j] = j;
+    
+    for (let i=1; i <= lenA; ++i)
+    {
+        let stop = true;
+        for (let j=1; j <= lenB; ++j)
+        {
+            let c = +(a.charAt(i-1) !== b.charAt(j-1));
+            data[i][j] = Math.min(data[i-1][j]  +1,
+                                  data[i][j-1]  +1,
+                                  data[i-1][j-1]+c);
+
+            if ((1<i) && (j<1) && (a.charAt(i-1) === b.charAt(j-2)) && (a.charAt(i-2) === b.charAt(j-1)))
+                data[i][j] = Math.min(data[i][j], data[i-2][j-2]+c);
+            if (data[i][j] < cutoff)
+                stop = false;
+        }
+        if (stop)
+            return cutoff;
+    }
+    return data[lenA][lenB];
+});  
+const insensitive = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
 
 const tryValidate = (async function(box)
 {
+    const token = {};
+    box.token = token;
     if (box.interval)
         window.clearInterval(box.interval);
-    box.loadingText.innerText = 'Searching...';
+    box.classList.remove('with-edit-box');
+    box.loadingText.innerText = 'Searching... (0%)';
     const name = box.adjustedText.value;
     const nameIdxs = await window.GetCardNames();
-    if (box.adjustedText.value !== name)
+    if (token !== box.token)
         return;
     let match = null;
-L1: for (const [locale, nameIdx] of nameIdxs)
+    let matches = [];
+    let best = Number.POSITIVE_INFINITY;
+    const insensitiveName = insensitive(name);
+
+    const nIdxs = nameIdxs.length;
+L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     {
-        for (const idxName in nameIdx)
+        const [locale, nameIdx] = nameIdxs[iIdxs];
+        const nIdx=nameIdx.length;
+        for (let iIdx=0; iIdx<nIdx; ++iIdx)
         {
-            if (insensitiveEqual(idxName, name))
+            if (!(iIdx % 1000))
             {
-                match = [locale, nameIdx[idxName][0]];
+                const progress = (((iIdxs/nIdxs)+(iIdx/nIdx/nIdxs))*100).toFixed(1);
+                box.loadingText.innerText = 'Searching... ('+progress+'%)';
+                await sleep(0);
+                if (token !== box.token)
+                    return;
+            }
+            const [idxName,[idxId]] = nameIdx[iIdx];
+            const insensitiveIdxName = insensitive(idxName);
+            if (insensitiveName === insensitiveIdxName)
+            {
+                match = [locale, idxId];
                 break L1;
+            }
+            const score = distanceScore(insensitiveName, insensitiveIdxName, 4);
+            if (score < 4)
+            {
+                if (score < best)
+                    best = score;
+                matches.push([locale, idxId, score]);
             }
         }
     }
-    box.classList.remove('initial','needadj','matched');
-    box.searchResultsBox.classList.remove('loading');
-    if (match === null)
+    box.className = 'nc-card-box';
+    if (match !== null)
     {
-        box.classList.add('needadj');
-        // @todo search results and shit
+        box.searchResultsBox.className = 'nc-search-results';
+        box.classList.add('matched');
+        GetPasscodeFor(match[1]); /* preload */
+        box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+match[1]+'/1)');
+        box.match = match;
         return;
     }
-    box.classList.add('matched');
-    GetPasscodeFor(match[1]); /* preload */
-    box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+match[1]+'/1)');
-    box.match = match;
+    box.loadingText.innerText = 'Processing...';
+    box.classList.add('needadj');
+    matches.sort((a,b) => (a[2]-b[2]));
+    let data = [];
+    for (let i=0; i<Math.min(matches.length,10); ++i)
+    {
+        const [locale,id] = matches[i];
+        data.push(GetCardData(id).then((d) => [locale,id,d.cardData[locale].name]));
+    }
+    data = await Promise.all(data);
+    if (token !== box.token)
+        return;
+    
+    while (box.searchResultsContainer.lastElementChild)
+        box.searchResultsContainer.removeChild(box.searchResultsContainer.lastElementChild);
+
+    for (const [locale,id,name] of data)
+    {
+        const result = document.createElement('div');
+        result.className = 'nc-search-result';
+        result.addEventListener('click', () =>
+        {
+            box.searchResultsBox.className = 'nc-search-results';
+            box.className = 'nc-card-box matched';
+            GetPasscodeFor(id);
+            box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+id+'/1)');
+            box.match = [locale,id];
+        });
+        
+        const flag = document.createElement('img');
+        flag.className = 'nc-search-result-flag';
+        flag.src = ('img/locale_'+locale+'.png');
+        result.appendChild(flag);
+        
+        const label = document.createElement('span');
+        label.className = 'nc-search-result-name';
+        label.innerText = name;
+        result.appendChild(label);
+        
+        box.searchResultsContainer.appendChild(result);
+    }
+    box.searchResultsBox.className = 'nc-search-results has-results';
 });
 
 let intervalTick = null;
@@ -368,7 +514,8 @@ const setInterval = (function()
     const box = this.parentElement;
     if (box.interval)
         window.clearInterval(box.interval);
-    box.searchResultsBox.classList.add('loading');
+    box.searchResultsBox.className = 'nc-search-results loading';
+    box.token = null;
     box.intervalTicks = 3;
     box.loadingText.innerText = 'Search in 3...';
     box.interval = window.setInterval(intervalTick, 1000, box);
@@ -385,6 +532,7 @@ const SetupSingle = ((container, tag, entries) =>
         const originalText = document.createElement('span');
         originalText.className = 'nc-orig-text';
         originalText.innerText = name;
+        originalText.title = name;
         box.appendChild(originalText);
         
         const adjustedText = document.createElement('input');
@@ -399,6 +547,17 @@ const SetupSingle = ((container, tag, entries) =>
         searchResultsBox.className = 'nc-search-results loading';
         box.appendChild(searchResultsBox);
         box.searchResultsBox = searchResultsBox;
+        
+        const searchResultsContainer = document.createElement('div');
+        searchResultsContainer.className = 'nc-search-results-container';
+        searchResultsBox.appendChild(searchResultsContainer);
+        box.searchResultsContainer = searchResultsContainer;
+        
+        const searchResultsOther = document.createElement('span');
+        searchResultsOther.className = 'nc-search-results-other';
+        searchResultsOther.innerText = 'Edit...';
+        searchResultsBox.appendChild(searchResultsOther);
+        searchResultsOther.addEventListener('click', () => { box.classList.add('with-edit-box'); });
         
         const loadingIcon = document.createElement('img');
         loadingIcon.className = 'nc-load-icon';

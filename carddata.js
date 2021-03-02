@@ -28,7 +28,7 @@ class RequestThrottle
 
 window.LOCALES = ['en','de','fr','it','es','pt'];
 
-const nameIdxs = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,j])));
+const nameIdxs = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,Object.entries(j)])));
 window.GetCardNames = (() => nameIdxs);
 
 const carddataCache = {};
