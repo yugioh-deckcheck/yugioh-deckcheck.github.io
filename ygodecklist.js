@@ -16,26 +16,60 @@ const logger = document.getElementById('assign-log');
 // each value is an array of two element arrays [countText, nameText], countText can be falsey
 let CURRENT_ASSIGNMENT = null;
 
-const drawSingle = function(assignment, hueMin, hueMax)
+const drawSingle = function(assignment, name, hueMin, hueMax)
 {
     if (!assignment.length)
         return;
     const step = ((hueMax-hueMin)/(assignment.length));
     let hue = (hueMin-(step/2));
+    let minLeft = Number.POSITIVE_INFINITY;
+    let maxRight = Number.NEGATIVE_INFINITY;
+    let minTop = Number.POSITIVE_INFINITY;
+    let maxBottom = Number.NEGATIVE_INFINITY;
     for (const [countText, nameTexts] of assignment)
     {
+        const minmax = ((elm) =>
+        {
+            minLeft = Math.min(minLeft, elm.offsetLeft);
+            maxRight = Math.max(maxRight, elm.offsetLeft+elm.offsetWidth);
+            minTop = Math.min(minTop, elm.offsetTop);
+            maxBottom = Math.max(maxBottom, elm.offsetTop+elm.offsetHeight);
+        });
+        
         const color = ('hsl('+(hue+=step)+',100%,50%)');
         if (countText)
         {
             countText.classList.add('highlight');
             countText.style.borderColor = color;
+            minmax(countText);
         }
         for (const nameText of nameTexts)
         {
             nameText.classList.add('highlight');
             nameText.style.borderColor = color;
+            minmax(nameText);
         }
     }
+    
+    const id = ('pdf-marker-'+name.toLowerCase());
+    let marker = document.getElementById(id);
+    if (isFinite(minLeft))
+    {
+        const container = document.getElementById('pdf-container');
+        if (!marker)
+        {
+            marker = document.createElement('div');
+            marker.id = id;
+            marker.innerText = (name+' Deck');
+            container.appendChild(marker);
+        }
+        marker.style.left = ((((minLeft/container.scrollWidth)*100)-1)+'%');
+        marker.style.width = (((((maxRight-minLeft)/container.scrollWidth)*100)+2)+'%');
+        marker.style.top = ((((minTop/container.scrollHeight)*100)-4)+'%');
+        marker.style.height = (((((maxBottom-minTop)/container.scrollHeight)*100)+5)+'%');
+    }
+    else if (marker)
+        marker.parentElement.removeChild(marker);
 };
 
 const drawAssignment = (() =>
@@ -46,9 +80,9 @@ const drawAssignment = (() =>
     const data = CURRENT_ASSIGNMENT;
     if (!data)
         return;
-    drawSingle(data.main,     0, 160);
-    drawSingle(data.extra,  185, 245);
-    drawSingle(data.side,   275, 335);
+    drawSingle(data.main,   'Main',    0, 160);
+    drawSingle(data.extra,  'Extra', 185, 245);
+    drawSingle(data.side,   'Side',  275, 335);
 });
 
 const elmToCount = ((countElm) =>
@@ -69,7 +103,7 @@ const cmp = {
 const parsers = {
     'pdf-editable': ((pdf) =>
     {
-        const elms = Array.from(pdf.children);
+        const elms = Array.from(pdf.children).filter((e) => e.classList.contains('pdf-element'));
         const anns = {};
         for (const elm of elms)
         {
@@ -117,7 +151,7 @@ const parsers = {
     }),
     'pdf-text': ((pdf) =>
     {
-        const elms = Array.from(pdf.children);
+        const elms = Array.from(pdf.children).filter((e) => e.classList.contains('pdf-element'));
         let labels = elms.filter((e) => (e.info.str.trim().startsWith('<<<')));
         if (labels.length !== 5)
         {
@@ -230,6 +264,7 @@ document.getElementById('assign-parse').addEventListener('click', () =>
         CURRENT_ASSIGNMENT = parsers[alg](document.getElementById('pdf-container'));
         Log(logger, 'Done parsing.');
     } catch (e) {
+        console.error(e);
         Log(logger, ('\''+alg+'\' parsing failed.'), 'warn');
         CURRENT_ASSIGNMENT = null;
     }
@@ -290,10 +325,10 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
     // we normalize the container to always be 90vmin in content height
     // this is the scaling factor of page pixels to vmin
     const scalingFactor = (90/height);
+    container.scalingFactor = scalingFactor;
     container.style.width = ((width*scalingFactor)+'vmin');
     
     // render text boxes
-    console.log(textContent.items);
     for (const item of textContent.items)
     {
         const box = document.createElement('span');
@@ -308,7 +343,6 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
     }
     
     // render annotations
-    console.log(annotations);
     for (const item of annotations)
     {
         if (item.fieldType !== 'Tx')
@@ -329,6 +363,9 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
         box.innerText = item.fieldValue;
         container.appendChild(box);
     }
+    
+    document.body.className = 'state-assign';
+
     // try to autodetect the type of pdf
     found : {
         for (const pdfType in parsers)
@@ -336,22 +373,21 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
             try
             {
                 CURRENT_ASSIGNMENT = parsers[pdfType](container);
-                drawAssignment();
-                Log(logger, 'Auto-detected form type: \''+pdfType+'\'.');
-                document.getElementById('assign-alg').value = pdfType;
-                break found;
             } catch (e) {
                 console.warn(pdfType+' failed to parse:', e);
                 while (logger.lastElementChild)
                     logger.removeChild(logger.lastElementChild);
+                continue;
             }
+            drawAssignment();
+            Log(logger, 'Auto-detected form type: \''+pdfType+'\'.');
+            document.getElementById('assign-alg').value = pdfType;
+            break found;
         }
         Log(logger, 'Failed to auto-detect form type.', 'warn');
         CURRENT_ASSIGNMENT = null;
         drawAssignment();
     }
-    
-    document.body.className = 'state-assign';
 };
 
 })(); /* ASSIGMENT PAGE LOGIC END */
