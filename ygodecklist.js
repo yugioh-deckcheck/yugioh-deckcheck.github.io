@@ -169,7 +169,7 @@ const parsers = {
             while (true)
             {
                 const el = findLeft(e, Number.NEGATIVE_INFINITY);
-                if (!el)
+                if (!el || (e.info.height !== el.info.height))
                     break;
                 if ((e.offsetLeft + e.offsetWidth) < (el.offsetLeft-10))
                     break;
@@ -277,7 +277,7 @@ document.getElementById('assign-next').addEventListener('click', () =>
         Log(logger, 'You have to parse the deck list first!','warn');
         return;
     }
-    document.body.className = 'state-namecorrect';
+    document.body.className = 'state-loading';
     window.NamecorrectSetup(assignmentRemap(CURRENT_ASSIGNMENT));
 });
 
@@ -350,6 +350,8 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
         CURRENT_ASSIGNMENT = null;
         drawAssignment();
     }
+    
+    document.body.className = 'state-assign';
 };
 
 })(); /* ASSIGMENT PAGE LOGIC END */
@@ -396,7 +398,8 @@ const distanceScore = ((a,b,cutoff) =>
     }
     return data[lenA][lenB];
 });  
-const insensitive = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
+/* for matching,  this can match automatically */ const insensitiveStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').toLowerCase());
+/* for searching, requires manual input */        const insensitiveLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
 
 const tryValidate = (async function(box)
 {
@@ -413,7 +416,8 @@ const tryValidate = (async function(box)
     let match = null;
     let matches = [];
     let best = Number.POSITIVE_INFINITY;
-    const insensitiveName = insensitive(name);
+    const matchName = insensitiveStrict(name);
+    const searchName = insensitiveLax(name);
 
     const nIdxs = nameIdxs.length;
 L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
@@ -431,13 +435,12 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
                     return;
             }
             const [idxName,[idxId]] = nameIdx[iIdx];
-            const insensitiveIdxName = insensitive(idxName);
-            if (insensitiveName === insensitiveIdxName)
+            if (matchName === insensitiveStrict(idxName))
             {
                 match = [locale, idxId];
                 break L1;
             }
-            const score = distanceScore(insensitiveName, insensitiveIdxName, 4);
+            const score = distanceScore(searchName, insensitiveLax(idxName), 4);
             if (score < 4)
             {
                 if (score < best)
@@ -585,6 +588,8 @@ window.NamecorrectSetup = function(assignment)
     SetupSingle(container, 'main', assignment.main);
     SetupSingle(container, 'extra', assignment.extra);
     SetupSingle(container, 'side', assignment.side);
+    
+    document.body.className = 'state-namecorrect';
 };
 
 document.getElementById('nc-back').addEventListener('click', () =>
@@ -637,7 +642,7 @@ document.getElementById('pdf-input').addEventListener('change', async function()
     while (logbox.lastElementChild)
         logbox.removeChild(logbox.lastElementChild);
 
-    document.body.className = 'state-assign';
+    document.body.className = 'state-loading';
 
     try
     {
