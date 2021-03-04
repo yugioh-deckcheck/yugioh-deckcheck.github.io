@@ -82,8 +82,13 @@ const drawAssignment = (() =>
     
     console.log(checks);
     for (const elm of checks)
+    {
         if (elm.dataset.tag)
+        {
+            elm.classList.remove('good','bad');
             elm.lastElementChild.innerText = '❓\uFE0E';
+        }
+    }
 
     if (!data)
         return;
@@ -95,9 +100,15 @@ const drawAssignment = (() =>
     {
         const v = data.checks[elm.dataset.tag];
         if (v === true)
+        {
+            elm.classList.add('good');
             elm.lastElementChild.innerText = '✔\uFE0E';
+        }
         else if (v === false)
+        {
+            elm.classList.add('bad');
             elm.lastElementChild.innerText = '✘\uFE0E';
+        }
     }
 });
 
