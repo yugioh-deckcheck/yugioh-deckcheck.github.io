@@ -1,5 +1,6 @@
 body:not(.state-noscript)    #noscript-box,
 body:not(.state-noasync)     #noasync-box,
+body:not(.state-loading)     #loading-box,
 body:not(.state-choose)      #choose-box,
 body:not(.state-assign)      #assign-box,
 body:not(.state-namecorrect) #namecorrect-box
@@ -15,6 +16,34 @@ body
     flex-direction: column;
     justify-content: center;
     align-items: center;
+}
+
+#loading-box
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    padding: 2vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    cursor: default;
+}
+
+#loading-box img
+{
+    width: 5vmin;
+    flex-basis: 5vmin;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+#loading-box span
+{
+    margin-top: 1.5vmin;
+    font-family: Monospace;
+    font-size: 3vmin;
 }
 
 #choose-box
@@ -46,10 +75,26 @@ body
     flex-direction: row;
     align-items: stretch;
     
-    padding: 2vmin;
+    padding: 1vh 1vw;
     background: #aaa;
     border: .5vmin solid #777;
     border-radius: 1vmin;
+    
+    width: 93vw;
+    height: 93vh;
+}
+
+#pdf-column
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 #pdf-container
@@ -57,7 +102,8 @@ body
     position: relative;
     border: .5vmin outset #000;
     background: #fff;
-    height: 90vmin;
+    flex-basis: 90vmin;
+    flex-grow: 0;
     width: 69.5455vmin;
     pointer-events: none;
 }
@@ -102,10 +148,13 @@ body
 
 #assign-right-box
 {
-    width: 40vmin;
-    margin-left: 3vw;
+    flex-basis: 12vw;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-left: 1vw;
     
-    padding: 2vmin;
+    padding: 1vmin;
     background: #ccc;
     border: .5vmin solid #777;
     border-radius: 1vmin;
@@ -157,6 +206,34 @@ body
 }
 #assign-alg { flex-grow: 1; }
 #assign-parse { margin-left: .1vw; }
+
+#assign-checks
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+#assign-checks > b
+{
+    align-self: flex-start;
+    margin-left: 2%;
+    margin-bottom: 1%;
+}
+#assign-checks > div
+{
+    display: flex;
+    flex-direction: row;
+    padding: 0 5%;
+}
+#assign-checks > div > label
+{
+    font-family: Monospace;
+}
+#assign-checks > div > span
+{
+    font-family: Monospace;
+    margin-left: auto;
+}
 
 #assign-buttons-box
 {
@@ -344,15 +421,29 @@ body
 
 #nc-controls
 {
-    flex-basis: 18vw;
+    flex-basis: 12vw;
     flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
     margin-left: 1vw;
     
     padding: 1vmin;
     background: #ccc;
     border: .5vmin solid #777;
     border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column;
 }
+
+#nc-controls > div
+{
+    padding: .5vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+#nc-controls > div + div { margin-top: 1vmin; }
 
 #nc-main-controls
 {
@@ -362,8 +453,10 @@ body
 }
 #nc-main-controls > input
 {
+    min-width: 0;
     flex-basis: 0;
     flex-grow: 1;
+    flex-shrink: 0;
     font-weight: bold;
 }
 #nc-back { background: #a00; }

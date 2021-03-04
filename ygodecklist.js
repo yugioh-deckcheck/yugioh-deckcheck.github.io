@@ -77,12 +77,28 @@ const drawAssignment = (() =>
     for (const elm of document.getElementById('pdf-container').children)
         elm.classList.remove('highlight');
     
+    const checks = document.getElementById('assign-checks').children;
     const data = CURRENT_ASSIGNMENT;
+    
+    console.log(checks);
+    for (const elm of checks)
+        if (elm.dataset.tag)
+            elm.lastElementChild.innerText = '❓\uFE0E';
+
     if (!data)
         return;
     drawSingle(data.main,   'Main',    0, 160);
     drawSingle(data.extra,  'Extra', 185, 245);
     drawSingle(data.side,   'Side',  275, 335);
+    
+    for (const elm of checks)
+    {
+        const v = data.checks[elm.dataset.tag];
+        if (v === true)
+            elm.lastElementChild.innerText = '✔\uFE0E';
+        else if (v === false)
+            elm.lastElementChild.innerText = '✘\uFE0E';
+    }
 });
 
 const elmToCount = ((countElm) =>
@@ -113,14 +129,10 @@ const parsers = {
             if (ann)
                 anns[ann.fieldName.toLowerCase()] = elm;
         }
-        const parseSingle = ((type,tag,totalName) => {
+        const parseSingle = ((tag,totalName) => {
             const countElm = anns[totalName];
             if (!countElm) throw ('Missing total elm: '+totalName);
             const count = parseInt(countElm.info.str);
-            if (count)
-                Log(logger, ('Total '+type+' count appears to be '+count.toString().padStart(2)+'.'));
-            else
-                Log(logger, ('Count not find total '+type+' count.'), 'warn');
             
             let res = [];
             let total = 0;
@@ -134,19 +146,31 @@ const parsers = {
                 total += elmToCount(cardNumElm);
             }
             if (total === count)
-                Log(logger, ('Total '+type+' count is '+count+'. Check OK.'));
+                return { cards: res, countOK: true };
+            else if (count === 0)
+                return { cards: res };
             else
-                Log(logger, ('Total '+type+' expected '+count+', but found '+total+'.'), 'error');
-            return res;
+                return { cards: res, countOK: false };
         });
         
+        const [monster,spell,trap,side,extra] = [
+            parseSingle('mon','total mon cards'),
+            parseSingle('spell','total spell cards'),
+            parseSingle('trap','total trap cards'),
+            parseSingle('side','total side number'),
+            parseSingle('extra','total extra deck'),
+        ];
         return {
-            main:  parseSingle('Monster','mon','total mon cards').concat(
-                       parseSingle('Spell  ','spell','total spell cards'),
-                       parseSingle('Trap   ','trap','total trap cards')
-                   ),
-            side:  parseSingle('Side   ','side','total side number'),
-            extra: parseSingle('Extra  ','extra','total extra deck'),
+            main: monster.cards.concat(spell.cards, trap.cards),
+            extra: extra.cards,
+            side: side.cards,
+            checks: {
+                monsterCount: monster.countOK,
+                spellCount:   spell.countOK,
+                trapCount:    trap.countOK,
+                extraCount:   extra.countOK,
+                sideCount:    side.countOK,
+            },
         };
     }),
     'pdf-text': ((pdf) =>
@@ -211,15 +235,10 @@ const parsers = {
             }
             return es;
         });
-        const parseFromLabel = ((type,label,cutoff,leftLabel) =>
+        const parseFromLabel = ((label,cutoff,leftLabel) =>
         {
             const countElm = findLeft(label);
             const count = (countElm ? parseInt(countElm.info.str) : 0);
-            if (count)
-                Log(logger, ('Total '+type+' count appears to be '+count.toString().padStart(2)+'.'));
-            else
-                Log(logger, ('Could not find total '+type+' count.'), 'warn');
-            
             const minY = label.info.bottom;
             const maxY = minY + cutoff;
             
@@ -230,28 +249,37 @@ const parsers = {
             else
                 cards = cards.map((e) => [findLeft(e,e.width*1.5), findExtras(e)]);
 
-            if (count)
-            {
-                let total = 0;
-                for (const [countElm,cardElm] of cards)
-                    total += elmToCount(countElm);
+            let total = 0;
+            for (const [countElm,cardElm] of cards)
+                total += elmToCount(countElm);
 
-                if (total === count)
-                    Log(logger, ('Total '+type+' count is '+count+'. Check OK.'));
-                else
-                    Log(logger, ('Total '+type+' expected '+count+', but found '+total+'.'), 'error');
-            }
-            
-            return cards;
+            if (total === count)
+                return { cards: cards, countOK: true };
+            else if (count === 0)
+                return { cards: cards };
+            else
+                return { cards: cards, countOK : false };
         });
+        
         const cutoff = (monLabel.info.bottom-sideLabel.info.bottom);
+        const [monster,spell,trap,side,extra] = [
+            parseFromLabel(monLabel, cutoff*1.05, monLabel),
+            parseFromLabel(spellLabel, cutoff*1.05, spellLabel),
+            parseFromLabel(trapLabel, cutoff*1.05, trapLabel),
+            parseFromLabel(sideLabel, cutoff, monLabel),
+            parseFromLabel(extraLabel, cutoff, spellLabel)
+        ];
         return {
-            main:  parseFromLabel('Monster', monLabel, cutoff*1.05, monLabel).concat(
-                       parseFromLabel('Spell  ', spellLabel, cutoff*1.05, spellLabel),
-                       parseFromLabel('Trap   ', trapLabel, cutoff*1.05, trapLabel)
-                   ),
-            side:  parseFromLabel('Side   ', sideLabel, cutoff, monLabel),
-            extra: parseFromLabel('Extra  ', extraLabel, cutoff, spellLabel),
+            main: monster.cards.concat(spell.cards, trap.cards),
+            extra: extra.cards,
+            side: side.cards,
+            checks: {
+                monsterCount: monster.countOK,
+                spellCount:   spell.countOK,
+                trapCount:    trap.countOK,
+                extraCount:   extra.countOK,
+                sideCount:    side.countOK,
+            },
         };
     }),
 };

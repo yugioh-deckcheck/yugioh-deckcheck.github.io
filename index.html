@@ -12,7 +12,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com">
         <link href="https://fonts.googleapis.com/css2?family=Open+Sans+Condensed:wght@300&display=swap" rel="stylesheet"> 
         
-        <link rel="prefetch" href="img/loading.gif" as="image">
+        <link rel="preload"  href="img/loading.gif"   as="image">
         <link rel="prefetch" href="img/locale_en.png" as="image">
         <link rel="prefetch" href="img/locale_de.png" as="image">
         <link rel="prefetch" href="img/locale_fr.png" as="image">
@@ -31,11 +31,17 @@
         </div>
         <div id="noasync-box">
         </div>
+        <div id="loading-box">
+            <img src="img/loading.gif">
+            <span>Loading...</span>
+        </div>
         <label id="choose-box" for="pdf-input">
             <span>Select Decklist PDF:</span> <input type="file" accept="application/pdf,.pdf" id="pdf-input" />
         </label>
         <div id="assign-box">
-            <div id="pdf-container">
+            <div id="pdf-column">
+                <div id="pdf-container">
+                </div>
             </div>
             <div id="assign-right-box">
                 <div id="assign-controls">
@@ -49,6 +55,14 @@
                             <option value="pdf-text">Text PDF</option>
                         </select>
                         <input type="button" id="assign-parse" value="Parse">
+                    </div>
+                    <div id="assign-checks">
+                        <b>Checks:</b>
+                        <div data-tag="monsterCount"><label>Monster count:</label><span></span></div>
+                        <div data-tag="spellCount"><label>Spell count:</label><span></span></div>
+                        <div data-tag="trapCount"><label>Trap count:</label><span></span></div>
+                        <div data-tag="extraCount"><label>Extra Deck count:</label><span></span></div>
+                        <div data-tag="sideCount"><label>Side Deck count:</label><span></span></div>
                     </div>
                     <div id="assign-buttons-box">
                         <b>Useful buttons:</b>
@@ -65,7 +79,7 @@
             <div id="nc-controls">
                 <div id="nc-main-controls">
                     <input type="button" id="nc-back" value="Go back">
-                    <input type="button" id="nc-decklist" value="Give me the decklist!">
+                    <input type="button" id="nc-decklist" value="To Decklist">
                 </div>
             </div>
         </div>
