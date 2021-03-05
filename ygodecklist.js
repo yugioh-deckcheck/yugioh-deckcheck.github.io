@@ -599,8 +599,9 @@ const setInterval = (function()
     box.interval = window.setInterval(intervalTick, 1000, box);
 });
 
-const SetupSingle = ((container, tag, entries) =>
+const SetupSingle = ((container, tag, entries, countCheck) =>
 {
+    let total = 0;
     for (const [count, name] of entries)
     {
         const box = document.createElement('div');
@@ -649,20 +650,42 @@ const SetupSingle = ((container, tag, entries) =>
         
         box.which = tag;
         box.count = count;
+        total += count;
         
         tryValidate(box);
     }
+    
+    const checkElm = document.getElementById('nc-check-'+tag);
+    checkElm.classList.remove('good','bad');
+    if (countCheck(total))
+    {
+        checkElm.classList.add('good');
+        checkElm.lastElementChild.innerText = '✔\uFE0E';
+    }
+    else
+    {
+        checkElm.classList.add('bad');
+        checkElm.lastElementChild.innerText = '✘\uFE0E';
+    }
 });
 
+const VALID_MAIN = ((c) => ((40 <= c) && (c <= 60)));
+const VALID_EXTRA = ((c) => ((c === 0) || (c === 15)));
+const VALID_SIDE = ((c) => (c === 15));
 window.NamecorrectSetup = function(assignment)
 {
     const container = document.getElementById('nc-cards-container');
     while (container.lastElementChild)
         container.removeChild(container.lastElementChild);
     
-    SetupSingle(container, 'main', assignment.main);
-    SetupSingle(container, 'extra', assignment.extra);
-    SetupSingle(container, 'side', assignment.side);
+    SetupSingle(container, 'main', assignment.main, VALID_MAIN);
+    SetupSingle(container, 'extra', assignment.extra, VALID_EXTRA);
+    SetupSingle(container, 'side', assignment.side, VALID_SIDE);
+    
+    const banlistCheck = document.getElementById('nc-check-banlist');
+    banlistCheck.classList.remove('good','bad');
+    banlistCheck.lastElementChild.innerText = /*'\u22EF'*/'NYI';
+    banlistCheck.lastElementChild.title = 'Not Yet Implemented';
     
     document.body.className = 'state-namecorrect';
 };

@@ -49,23 +49,26 @@
                         <input type="button" id="assign-close" value="Close Deck">
                         <input type="button" id="assign-next" value="Continue">
                     </div>
-                    <div id="assign-parse-box">
-                        <select id="assign-alg">
-                            <option value="pdf-editable">Editable PDF</option>
-                            <option value="pdf-text">Text PDF</option>
-                        </select>
-                        <input type="button" id="assign-parse" value="Parse">
+                    <div id="assign-checks" class="checks-box">
+                        <header>Checks:</header>
+                        <div data-tag="monsterCount"><label>Monster total:</label><span></span></div>
+                        <div data-tag="spellCount"><label>Spell total:</label><span></span></div>
+                        <div data-tag="trapCount"><label>Trap total:</label><span></span></div>
+                        <div data-tag="extraCount"><label>Extra total:</label><span></span></div>
+                        <div data-tag="sideCount"><label>Side total:</label><span></span></div>
                     </div>
-                    <div id="assign-checks">
-                        <b>Checks:</b>
-                        <div data-tag="monsterCount"><label>Monster count:</label><span></span></div>
-                        <div data-tag="spellCount"><label>Spell count:</label><span></span></div>
-                        <div data-tag="trapCount"><label>Trap count:</label><span></span></div>
-                        <div data-tag="extraCount"><label>Extra Deck count:</label><span></span></div>
-                        <div data-tag="sideCount"><label>Side Deck count:</label><span></span></div>
+                    <div id="assign-parse-box">
+                        <header>Parse as:</header>
+                        <div>
+                            <select id="assign-alg">
+                                <option value="pdf-editable">Editable PDF</option>
+                                <option value="pdf-text">Text PDF</option>
+                            </select>
+                            <input type="button" id="assign-parse" value="Parse">
+                        </div>
                     </div>
                     <div id="assign-buttons-box">
-                        <b>Useful buttons:</b>
+                        <header>Useful buttons:</header>
                         <input type="button" id="assign-flip" value="Flip Extra & Side">
                     </div>
                 </div>
@@ -80,6 +83,13 @@
                 <div id="nc-main-controls">
                     <input type="button" id="nc-back" value="Go back">
                     <input type="button" id="nc-decklist" value="To Decklist">
+                </div>
+                <div id="nc-checks" class="checks-box">
+                    <header>Checks:</header>
+                    <div id="nc-check-banlist"><label>F&amp;L OK?</label><span></span></div>
+                    <div id="nc-check-main"><label>Main is 40-60?</label><span></span></div>
+                    <div id="nc-check-extra"><label>Extra is 0/15?</label><span></span></div>
+                    <div id="nc-check-side"><label>Side is 15?</label><span></span></div>
                 </div>
             </div>
         </div>

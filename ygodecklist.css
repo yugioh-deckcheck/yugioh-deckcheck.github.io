@@ -182,6 +182,13 @@ body
     border-radius: 1vmin;
 }
 #assign-controls > div + div { margin-top: 1vmin; }
+#assign-controls > div > header
+{
+    align-self: flex-start;
+    margin-left: 2%;
+    margin-bottom: 1%;
+    font-weight: bold;
+}
 
 #assign-main-buttons
 {
@@ -201,46 +208,56 @@ body
 #assign-parse-box
 {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+#assign-parse-box > div
+{
+    display: flex;
     flex-direction: row;
     align-items: center;
 }
 #assign-alg { flex-grow: 1; }
 #assign-parse { margin-left: .1vw; }
 
-#assign-checks
+.checks-box
 {
     display: flex;
     flex-direction: column;
     align-items: stretch;
 }
-#assign-checks > b
-{
-    align-self: flex-start;
-    margin-left: 2%;
-    margin-bottom: 1%;
-}
-#assign-checks > div
+.checks-box > div
 {
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 0 5%;
+    margin: 0 .5vw;
 }
-#assign-checks > div > label
+.checks-box > div > label
 {
     font-family: Monospace;
+    padding: 0 .2vw;
+    border-radius: .5vw;
+    background: rgba(255,255,0,.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-#assign-checks > div > span
+.checks-box > div.good > label { background: none; }
+.checks-box > div.bad  > label { background: rgba(255,0,0,.7); }
+.checks-box > div > span
 {
     font-family: Monospace;
     margin-left: auto;
-    border-radius: 50%;
+    border-radius: .5vw;
     background: rgba(255,255,0,.3);
-    min-width: 1.5em;
+    min-width: 1.4em;
+    line-height: 1.4em;
+    vertical-align: center;
     text-align: center;
 }
-#assign-checks > div.good > span { background: rgba(0,255,0,.3); }
-#assign-checks > div.bad  > span { background: rgba(255,0,0,.7); }
+.checks-box > div.good > span { background: rgba(0,255,0,.3); }
+.checks-box > div.bad  > span { background: rgba(255,0,0,.7); }
 
 #assign-buttons-box
 {
@@ -248,7 +265,6 @@ body
     flex-direction: column;
     align-items: stretch;
 }
-#assign-buttons-box > b { align-self: flex-start; margin-left: 2%; margin-bottom: 1%; }
 
 #assign-log
 {
