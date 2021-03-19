@@ -453,7 +453,7 @@ const DoBanlistCheck = (() =>
             document.getElementById('nc-decklist').disabled = true;
             return;
         }
-        counts[box.match[1]] = ((counts[box.match[1]] || 0) + box.count);
+        counts[box.matchedCardId] = ((counts[box.matchedCardId] || 0) + box.count);
     }
     document.getElementById('nc-decklist').disabled = false;
     
@@ -531,6 +531,34 @@ const distanceScore = ((a,b,cutoff) =>
 /* for matching,  this can match automatically */ const insensitiveStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').toLowerCase());
 /* for searching, requires manual input */        const insensitiveLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
 
+const setBoxMatch = ((box, locale, id) =>
+{
+    box.className = 'nc-card-box matched';
+    box.searchResultsBox.className = 'nc-search-results';
+    box.matchedCardLocale = locale;
+    box.matchedCardId = id;
+    
+    GetPasscodeFor(id); /* preload */
+    ScheduleBanlistCheck();
+    
+    const background = ('url(https://db.ygorganization.com/artwork/'+id+'/1)');
+    switch (box.count)
+    {
+        case 1:
+            box.style.backgroundImage = background;
+            box.style.backgroundPosition = '1.1vw 15%';
+            break;
+        case 2:
+            box.style.backgroundImage = (background+','+background);
+            box.style.backgroundPosition = '0.8vw 15%, 1.4vw 15%';
+            break;
+        case 3:
+            box.style.backgroundImage = (background+','+background+','+background);
+            box.style.backgroundPosition = '0.5vw 15%, 1.1vw 15%, 1.7vw 15%';
+            break;
+    }
+});
+
 const tryValidate = (async function(box)
 {
     const token = {};
@@ -597,12 +625,7 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     box.className = 'nc-card-box';
     if (match !== null)
     {
-        box.searchResultsBox.className = 'nc-search-results';
-        box.classList.add('matched');
-        ScheduleBanlistCheck();
-        GetPasscodeFor(match[1]); /* preload */
-        box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+match[1]+'/1)');
-        box.match = match;
+        setBoxMatch(box, match[0], match[1]);
         return;
     }
     box.loadingText.innerText = 'Processing...';
@@ -626,15 +649,7 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
         const result = document.createElement('div');
         result.className = 'nc-search-result';
         result.title = name;
-        result.addEventListener('click', () =>
-        {
-            box.searchResultsBox.className = 'nc-search-results';
-            box.className = 'nc-card-box matched';
-            ScheduleBanlistCheck();
-            GetPasscodeFor(id);
-            box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+id+'/1)');
-            box.match = [locale,id];
-        });
+        result.addEventListener('click', () => { setBoxMatch(box, locale, id); });
         
         const flag = document.createElement('img');
         flag.className = 'nc-search-result-flag';
@@ -779,7 +794,7 @@ document.getElementById('nc-decklist').addEventListener('click', async () =>
     {
         if (!box.classList.contains('matched'))
             return;
-        promises[box.which].push(GetPasscodeFor(box.match[1]).then((c) => [c,box.count]));
+        promises[box.which].push(GetPasscodeFor(box.matchedCardId).then((c) => [c,box.count]));
     }
     const [main, extra, side] = await Promise.all([Promise.all(promises.main), Promise.all(promises.extra), Promise.all(promises.side)]);
     const [mainC, extraC, sideC] = [CompressDeckData(main), CompressDeckData(extra), CompressDeckData(side)];
