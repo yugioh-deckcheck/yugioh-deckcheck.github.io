@@ -55,25 +55,58 @@ window.GetCardData = ((id) =>
 });
 
 const passcodeBaton = new RequestThrottle();
-const GetSinglePasscode = (async (id) =>
+const GetPasscodes = (async (ids) =>
 {
-    const name = (await GetCardData(id)).cardData.en.name;
-    await passcodeBaton.grab();
-    try
+    const reverse = {};
+    const names = await Promise.all(ids.map(async (id) =>
     {
-        const apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(name))).json();
-        return apiData.data[0].id;
-    } finally { passcodeBaton.drop(); }
+        const name = (await GetCardData(id)).cardData.en.name;
+        reverse[name] = id;
+        return name;
+    }));
+    
+    const results = {};
+    while (names.length)
+    {
+        const thisNames = names.splice(-10,10);
+        await passcodeBaton.grab();
+        let apiData = null;
+        try
+        {
+            apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
+        } finally { passcodeBaton.drop(); }
+        
+        for (const data of apiData.data)
+            results[reverse[data.name]] = data.id;
+    }
+    return results;
 });
 const passcodeCache = {};
-window.GetPasscodeFor = ((id) =>
+window.GetPasscodesFor = ((ids) =>
 {
-    let p = passcodeCache[id];
-    if (p)
-        return p;
-    p = GetSinglePasscode(id);
-    passcodeCache[id] = p;
-    return p;
+    const results = {};
+    ids = ids.filter((id) =>
+    {
+        const p = passcodeCache[id];
+        if (p)
+        {
+            results[id] = p;
+            return false;
+        }
+        return true;
+    });
+    
+    if (!ids.length)
+        return results;
+    
+    const mainPromise = GetPasscodes(ids);
+    for (const id of ids)
+    {
+        const p = mainPromise.then((passcodes) => { return passcodes[id]; });
+        passcodeCache[id] = p;
+        results[id] = p;
+    }
+    return results;
 });
 
 })();

@@ -80,7 +80,6 @@ const drawAssignment = (() =>
     const checks = document.getElementById('assign-checks').children;
     const data = CURRENT_ASSIGNMENT;
     
-    console.log(checks);
     for (const elm of checks)
     {
         if (elm.dataset.tag)
@@ -455,7 +454,6 @@ const DoBanlistCheck = (() =>
         }
         counts[box.matchedCardId] = ((counts[box.matchedCardId] || 0) + box.count);
     }
-    document.getElementById('nc-decklist').disabled = false;
     
     (async () =>
     {
@@ -480,6 +478,32 @@ const DoBanlistCheck = (() =>
             banlistCheck.lastElementChild.innerText = '✔\uFE0E';
             banlistCheck.title = '';
         }
+    })();
+    
+    (async () =>
+    {
+        const cardIds = [];
+        for (const box of document.getElementById('nc-cards-container').children)
+            cardIds.push(box.matchedCardId);
+        
+        const passcodeMap = await GetPasscodesFor(cardIds);
+        const promises = { main: [], extra: [], side: [] };
+        for (const box of document.getElementById('nc-cards-container').children)
+            promises[box.which].push(passcodeMap[box.matchedCardId].then((c) => [c,box.count]));
+        
+        const [main, extra, side] = await Promise.all([Promise.all(promises.main), Promise.all(promises.extra), Promise.all(promises.side)]);
+        const [mainC, extraC, sideC] = [CompressDeckData(main), CompressDeckData(extra), CompressDeckData(side)];
+        
+        let tag = mainC;
+        if (extraC || sideC)
+            tag += (';' + extraC);
+        if (sideC)
+            tag += (';' + sideC);
+        tag += (':'+encodeURIComponent('exported deck naming stuff NYI'));
+        
+        const decklistButton = document.getElementById('nc-decklist');
+        decklistButton.decklistTag = tag;
+        decklistButton.disabled = false;
     })();
 });
 const ScheduleBanlistCheck = (() =>
@@ -537,8 +561,7 @@ const setBoxMatch = ((box, locale, id) =>
     box.searchResultsBox.className = 'nc-search-results';
     box.matchedCardLocale = locale;
     box.matchedCardId = id;
-    
-    GetPasscodeFor(id); /* preload */
+
     ScheduleBanlistCheck();
     
     const background = ('url(https://db.ygorganization.com/artwork/'+id+'/1)');
@@ -782,30 +805,9 @@ document.getElementById('nc-back').addEventListener('click', () =>
     document.body.className = 'state-assign';
 });
 
-document.getElementById('nc-decklist').addEventListener('click', async () =>
+document.getElementById('nc-decklist').addEventListener('click', function()
 {
-    const promises =
-    {
-        main: [],
-        extra: [],
-        side: [],
-    };
-    for (const box of document.getElementById('nc-cards-container').children)
-    {
-        if (!box.classList.contains('matched'))
-            return;
-        promises[box.which].push(GetPasscodeFor(box.matchedCardId).then((c) => [c,box.count]));
-    }
-    const [main, extra, side] = await Promise.all([Promise.all(promises.main), Promise.all(promises.extra), Promise.all(promises.side)]);
-    const [mainC, extraC, sideC] = [CompressDeckData(main), CompressDeckData(extra), CompressDeckData(side)];
-    
-    let tag = mainC;
-    if (extraC || sideC)
-        tag += (';' + extraC);
-    if (sideC)
-        tag += (';' + sideC);
-    tag += (':'+encodeURIComponent('exported deck naming stuff NYI'));
-    window.open('https://yugiohdeck.github.io/#'+tag,'_blank').focus();
+    window.open('https://yugiohdeck.github.io/#'+this.decklistTag,'_blank').focus();
 });
 
 })(); /* NAMECORRECT PAGE LOGIC END */
