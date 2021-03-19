@@ -432,6 +432,61 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
 })(); /* ASSIGMENT PAGE LOGIC END */
 
 /* NAMECORRECT PAGE LOGIC START */ (()=>{
+   
+let _banlistCheckTimeout = 0;   
+const DoBanlistCheck = (() =>
+{
+    window.clearTimeout(_banlistCheckTimeout);
+    const banlistCheck = document.getElementById('nc-check-banlist');
+    banlistCheck.classList.remove('good','bad');
+    banlistCheck.title = 'Working...';
+    banlistCheck.lastElementChild.innerText = '\u22EF';
+    
+    const counts = {}
+    for (const box of document.getElementById('nc-cards-container').children)
+    {
+        if (!box.classList.contains('matched'))
+        {
+            banlistCheck.classList.remove('good','bad');
+            banlistCheck.title = 'Please resolve all cards first!';
+            banlistCheck.lastElementChild.innerText = '';
+            document.getElementById('nc-decklist').disabled = true;
+            return;
+        }
+        counts[box.match[1]] = ((counts[box.match[1]] || 0) + box.count);
+    }
+    document.getElementById('nc-decklist').disabled = false;
+    
+    (async () =>
+    {
+        const errors = (await Promise.all(Object.entries(counts).map(async ([id,count]) =>
+        {
+            const cardData = (await GetCardData(id)).cardData.en;
+            const banStatus = cardData.banlistStatus;
+            const allowed = (isNaN(banStatus) ? 3 : banStatus);
+            if (allowed < count)
+                return (cardData.name + ': includes '+count+', allowed '+allowed);
+        }))).filter((e)=>(e));
+        
+        if (errors.length)
+        {
+            banlistCheck.classList.add('bad')
+            banlistCheck.lastElementChild.innerText = '✘\uFE0E';
+            banlistCheck.title = errors.join('\n');
+        }
+        else
+        {
+            banlistCheck.classList.add('good');
+            banlistCheck.lastElementChild.innerText = '✔\uFE0E';
+            banlistCheck.title = '';
+        }
+    })();
+});
+const ScheduleBanlistCheck = (() =>
+{
+    window.clearTimeout(_banlistCheckTimeout);
+    _banlistCheckTimeout = window.setTimeout(DoBanlistCheck, 250);
+});
 
 const distanceScore = ((a,b,cutoff) =>
 {
@@ -529,6 +584,7 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     {
         box.searchResultsBox.className = 'nc-search-results';
         box.classList.add('matched');
+        ScheduleBanlistCheck();
         GetPasscodeFor(match[1]); /* preload */
         box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+match[1]+'/1)');
         box.match = match;
@@ -554,10 +610,12 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     {
         const result = document.createElement('div');
         result.className = 'nc-search-result';
+        result.title = name;
         result.addEventListener('click', () =>
         {
             box.searchResultsBox.className = 'nc-search-results';
             box.className = 'nc-card-box matched';
+            ScheduleBanlistCheck();
             GetPasscodeFor(id);
             box.style.backgroundImage = ('url(https://db.ygorganization.com/artwork/'+id+'/1)');
             box.match = [locale,id];
@@ -682,10 +740,7 @@ window.NamecorrectSetup = function(assignment)
     SetupSingle(container, 'extra', assignment.extra, VALID_EXTRA);
     SetupSingle(container, 'side', assignment.side, VALID_SIDE);
     
-    const banlistCheck = document.getElementById('nc-check-banlist');
-    banlistCheck.classList.remove('good','bad');
-    banlistCheck.lastElementChild.innerText = /*'\u22EF'*/'NYI';
-    banlistCheck.lastElementChild.title = 'Not Yet Implemented';
+    DoBanlistCheck();
     
     document.body.className = 'state-namecorrect';
 };
@@ -708,10 +763,7 @@ document.getElementById('nc-decklist').addEventListener('click', async () =>
     for (const box of document.getElementById('nc-cards-container').children)
     {
         if (!box.classList.contains('matched'))
-        {
-            window.alert('At least one card isn\'t resolved, fix that. (Pretty errors NYI.)');
             return;
-        }
         promises[box.which].push(GetPasscodeFor(box.match[1]).then((c) => [c,box.count]));
     }
     const [main, extra, side] = await Promise.all([Promise.all(promises.main), Promise.all(promises.extra), Promise.all(promises.side)]);

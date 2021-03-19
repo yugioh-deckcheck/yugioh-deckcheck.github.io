@@ -230,7 +230,7 @@ body
 {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-end;
     margin: 0 .5vw;
 }
 .checks-box > div > label
@@ -252,12 +252,12 @@ body
     border-radius: .5vw;
     background: rgba(255,255,0,.3);
     min-width: 1.4em;
-    line-height: 1.4em;
-    vertical-align: center;
+    min-height: 1.4em;
     text-align: center;
 }
 .checks-box > div.good > span { background: rgba(0,255,0,.3); }
 .checks-box > div.bad  > span { background: rgba(255,0,0,.7); }
+.checks-box > div > span:empty { visibility: hidden; }
 
 #assign-buttons-box
 {
@@ -467,6 +467,13 @@ body
     border-radius: 1vmin;
 }
 #nc-controls > div + div { margin-top: 1vmin; }
+#nc-controls > div > header
+{
+    align-self: flex-start;
+    margin-left: 2%;
+    margin-bottom: 1%;
+    font-weight: bold;
+}
 
 #nc-main-controls
 {
@@ -484,3 +491,4 @@ body
 }
 #nc-back { background: #a00; }
 #nc-decklist { background: #0a0; }
+#nc-decklist:disabled { background: #393; }
