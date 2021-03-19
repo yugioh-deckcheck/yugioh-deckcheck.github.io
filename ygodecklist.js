@@ -541,6 +541,7 @@ const tryValidate = (async function(box)
     box.loadingText.innerText = 'Searching... (0%)';
     const name = box.adjustedText.value;
     const nameIdxs = await window.GetCardNames();
+    const extraDeckCards = await window.GetExtraDeckCards();
     if (token !== box.token)
         return;
     let match = null;
@@ -564,7 +565,21 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
                 if (token !== box.token)
                     return;
             }
+            
             const [idxName,[idxId]] = nameIdx[iIdx];
+            
+            switch (box.which)
+            {
+                case 'main':
+                    if (extraDeckCards.has(idxId))
+                        continue;
+                    break;
+                case 'extra':
+                    if (!extraDeckCards.has(idxId))
+                        continue;
+                    break;
+            }
+
             if (matchName === insensitiveStrict(idxName))
             {
                 match = [locale, idxId];

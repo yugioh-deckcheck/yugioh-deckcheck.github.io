@@ -31,6 +31,18 @@ window.LOCALES = ['en','de','fr','it','es','pt'];
 const nameIdxs = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,Object.entries(j)])));
 window.GetCardNames = (() => nameIdxs);
 
+const extraDeckIdx = (async () =>
+{
+    const idx = await (await fetch('https://db.ygorganization.com/data/idx/card/properties/en')).json();
+    const cards = new Set();
+    for (const id of idx.Fusion) cards.add(id);
+    for (const id of idx.Synchro) cards.add(id);
+    for (const id of idx.Xyz) cards.add(id);
+    for (const id of idx.Link) cards.add(id);
+    return cards;
+})();
+window.GetExtraDeckCards = (() => extraDeckIdx);
+
 const carddataCache = {};
 window.GetCardData = ((id) =>
 {
