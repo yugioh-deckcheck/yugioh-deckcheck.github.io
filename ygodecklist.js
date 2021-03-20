@@ -576,8 +576,6 @@ const distanceScore = ((a,b,cutoff) =>
     }
     return data[lenA][lenB];
 });  
-/* for matching,  this can match automatically */ const insensitiveStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').toLowerCase());
-/* for searching, requires manual input */        const insensitiveLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
 
 const setBoxMatch = ((box, locale, id) =>
 {
@@ -615,18 +613,37 @@ const tryValidate = (async function(box)
     box.classList.remove('with-edit-box');
     box.loadingText.innerText = 'Searching... (0%)';
     const name = box.adjustedText.value;
+    const nameIdx = await window.GetCardNameIndex();
     const nameIdxs = await window.GetCardNames();
     const extraDeckCards = await window.GetExtraDeckCards();
     if (token !== box.token)
         return;
-    let match = null;
+        
+    const isValidFor = ((box, id) =>
+    {
+        switch (box.which)
+        {
+            case 'main':
+                return !extraDeckCards.has(id);
+            case 'extra':
+                return extraDeckCards.has(id);
+            default:
+                return true;
+        }
+    });
+
+    const exactMatch = nameIdx[window.NormalizeNameStrict(name)];
+    if (exactMatch && isValidFor(box, exactMatch[1]))
+    {
+        setBoxMatch(box, exactMatch[0], exactMatch[1]);
+        return;
+    }
+
     let matches = [];
-    let best = Number.POSITIVE_INFINITY;
-    const matchName = insensitiveStrict(name);
-    const searchName = insensitiveLax(name);
+    const searchName = window.NormalizeNameLax(name);
 
     const nIdxs = nameIdxs.length;
-L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
+    for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     {
         const [locale, nameIdx] = nameIdxs[iIdxs];
         const nIdx=nameIdx.length;
@@ -641,40 +658,17 @@ L1: for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
                     return;
             }
             
-            const [idxName,[idxId]] = nameIdx[iIdx];
+            const [idxId,idxName] = nameIdx[iIdx];
             
-            switch (box.which)
-            {
-                case 'main':
-                    if (extraDeckCards.has(idxId))
-                        continue;
-                    break;
-                case 'extra':
-                    if (!extraDeckCards.has(idxId))
-                        continue;
-                    break;
-            }
+            if (!isValidFor(box, idxId))
+                continue;
 
-            if (matchName === insensitiveStrict(idxName))
-            {
-                match = [locale, idxId];
-                break L1;
-            }
-            const score = distanceScore(searchName, insensitiveLax(idxName), 4);
+            const score = distanceScore(searchName, idxName, 4);
             if (score < 4)
-            {
-                if (score < best)
-                    best = score;
                 matches.push([locale, idxId, score]);
-            }
         }
     }
     box.className = 'nc-card-box';
-    if (match !== null)
-    {
-        setBoxMatch(box, match[0], match[1]);
-        return;
-    }
     box.loadingText.innerText = 'Processing...';
     box.classList.add('needadj');
     matches.sort((a,b) => (a[2]-b[2]));

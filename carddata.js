@@ -28,8 +28,16 @@ class RequestThrottle
 
 window.LOCALES = ['en','de','fr','it','es','pt'];
 
-const nameIdxs = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,Object.entries(j)])));
-window.GetCardNames = (() => nameIdxs);
+/* for searching, requires manual input */        window.NormalizeNameLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
+/* for matching,  this can match automatically */ window.NormalizeNameStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').toLowerCase());
+
+const nameIdxO = {};
+const nameList = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,Object.entries(j).map(([name,[id]]) => { nameIdxO[window.NormalizeNameStrict(name)] = [locale,id]; return [id,window.NormalizeNameLax(name)]; })])));
+window.GetCardNames = (() => nameList);
+
+const nameIdxP = nameList.then(() => nameIdxO);
+window.GetCardNameIndex = (() => nameIdxP);
+
 
 const extraDeckIdx = (async () =>
 {
