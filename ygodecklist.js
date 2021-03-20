@@ -163,6 +163,8 @@ const parsers = {
                 return { cards: res, countOK: false };
         });
         
+        const nameElm = anns['full name'];
+        const eventElm = anns['event name'];
         const [monster,spell,trap,side,extra] = [
             parseSingle('mon','total mon cards'),
             parseSingle('spell','total spell cards'),
@@ -171,6 +173,8 @@ const parsers = {
             parseSingle('extra','total extra deck'),
         ];
         return {
+            playerName: nameElm && nameElm.info.str,
+            eventName: eventElm && eventElm.info.str,
             main: monster.cards.concat(spell.cards, trap.cards),
             extra: extra.cards,
             side: side.cards,
@@ -335,6 +339,7 @@ const remapSingle = (([countElm, nameElms]) => [elmToCount(countElm), nameElms.m
 const assignmentRemap = ((ass) =>
 {
     return {
+        name: (!ass.playerName ? 'Exported Deck' : !ass.eventName ? ('Exported Deck – '+ass.playerName) : (ass.eventName+' – '+ass.playerName)),
         main: ass.main.map(remapSingle),
         extra: ass.extra.map(remapSingle),
         side: ass.side.map(remapSingle),
@@ -431,7 +436,8 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
 })(); /* ASSIGMENT PAGE LOGIC END */
 
 /* NAMECORRECT PAGE LOGIC START */ (()=>{
-   
+
+let deckName = 'Exported Deck';
 let _banlistCheckTimeout = 0;   
 const DoBanlistCheck = (() =>
 {
@@ -504,7 +510,7 @@ const DoBanlistCheck = (() =>
             tag += (';' + extraC);
         if (sideC)
             tag += (';' + sideC);
-        tag += (':'+encodeURIComponent('exported deck naming stuff NYI'));
+        tag += (':'+encodeURIComponent(deckName));
         
         const decklistButton = document.getElementById('nc-decklist');
         decklistButton.disabled = false;
@@ -803,6 +809,7 @@ const VALID_EXTRA = ((c) => ((c === 0) || (c === 15)));
 const VALID_SIDE = ((c) => (c === 15));
 window.NamecorrectSetup = function(assignment)
 {
+    deckName = assignment.name;
     const container = document.getElementById('nc-cards-container');
     while (container.lastElementChild)
         container.removeChild(container.lastElementChild);
