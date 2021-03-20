@@ -27,9 +27,39 @@
     </head>
     
     <body class="state-noscript">
+        <script type="text/javascript">document.body.className = 'state-noasync'</script>
         <div id="noscript-box">
+            <div>
+                <img src="img/noscript.png">
+                <header>JavaScript is disabled</header>
+                <p>It appears that we are not allowed to run JavaScript in your browser.</p>
+                <p>Please whitelist <b>yugioh-deckcheck.github.io</b> and <b>db.ygorganization.com</b> to use the Deck List parsing and checking functionality.<br>If you want to export deck lists as a file or a viewable link, please additionally whitelist <b>yugiohdeck.github.io</b> and <b>db.ygoprodeck.com</b>.</p>
+                <header>What am I opting into?</header>
+                <p>This tool is a single-page self-contained web application. It is heavily powered by JavaScript. None of the data you work on ever leaves your computer.</p>
+                <p>We load the following unobfuscated script files from <b>yugioh-deckcheck.github.io</b>:</p>
+                <ul>
+                    <li><a href="ygodecklist.js" target="_blank">ygodecklist.js</a> is the main script containing decklist parsing functionality.</li>
+                    <li><a href="carddata.js" target="_blank">carddata.js</a> handles connections to our external data sources.</li>
+                    <li><a href="include/pdf.js" target="_blank">include/pdf.js</a> is a static copy of <a href="https://github.com/mozilla/pdf.js/" target="_blank" rel="external nofollow">Mozilla's PDF.js library</a>, which we use to parse PDF files.</li>
+                </ul>
+                <p>Additionally, we query card data and artworks from <a href="https://db.ygorganization.com/about/api" target="_blank" rel="external nofollow">the <b>db.ygorganization.com</b> API</a>. This is used to perform card name recognition, and banlist validation. We do not embed any script files from this host.</p>
+                <header></header>
+                <p>We also allow you to export the final Decklist as a self-contained link to <b>yugiohdeck.github.io</b>. This does not store any data on a server &ndash; everything is contained in the link.</p>
+                <ul>
+                    <li><a href="https://yugiohdeck.github.io/compression.js" target="_blank" rel="external nofollow">compression.js</a> is embedded from <b>yugiohdeck.github.io</b> to allow us to generate this link.</li>
+                </ul>
+                <p>The .ydk file format used identifies cards by their eight-digit passcode. To map a card to its passcode, we request data from <a href="https://db.ygoprodeck.com/api-guide/" target="_blank" rel="external nofollow">the <b>db.ygoprodeck.com</b> API</a>. No script files from this host are embedded.</p>
+            </div>
         </div>
         <div id="noasync-box">
+            <div>
+                <header>JavaScript failed to load</header>
+                <p>This is not really supposed to happen. Strange.</p>
+                <p>Are you using a fairly old browser, perhaps? We require support for features like <i>async</i> and <i>await</i>, which have only been standardized in the last few years.</p>
+                <p>Very old browsers might refuse to load our scripts for this reason. Still, strange.</p>
+                <header></header>
+                <p>If you cannot figure it out, you're more than welcome to <a href="https://old.reddit.com/message/compose/?to=gallantron" rel="author external nofollow" target="_blank">contact us</a>. Sorry for the inconvenience.</p>
+            </div>
         </div>
         <div id="loading-box">
             <img src="img/loading.gif">
@@ -94,5 +124,4 @@
             </div>
         </div>
     </body>
-    <script type="text/javascript">document.body.className = 'state-noasync'</script>
 </html>

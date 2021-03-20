@@ -18,6 +18,59 @@ body
     align-items: center;
 }
 
+body.state-noscript, body.state-noasync
+{
+    background: #777;
+}
+
+#noscript-box, #noasync-box
+{
+    background: #555;
+    border-radius: 1vmin;
+    padding: 1vmin;
+    width: 80vw;
+}
+
+#noscript-box > div, #noasync-box > div
+{
+    border: .2vmin inset #fff;
+    background: #ccc;
+    padding: .2vmin;
+    
+    text-align: left;
+}
+
+#noscript-box header, #noasync-box header
+{
+    font-size: 1.3em;
+    font-weight: bold;
+    border-bottom: 1px solid #000;
+    margin-bottom: .3em;
+}
+
+#noscript-box p, #noasync-box p
+{
+    margin: .5em .5em;
+}
+
+#noscript-box p + header, #noasync-box p + header
+{
+    margin-top: 1em;
+}
+
+#noscript-box ul, #noasync-box ul
+{
+    margin: .5em 0;
+}
+
+#noscript-box img
+{
+    float: right;
+    width: 5em;
+    height: 5em;
+    background: #ccc;
+}
+
 #loading-box
 {
     display: flex;
