@@ -441,6 +441,11 @@ const DoBanlistCheck = (() =>
     banlistCheck.title = 'Working...';
     banlistCheck.lastElementChild.innerText = '\u22EF';
     
+    const decklistButton = document.getElementById('nc-decklist')
+    decklistButton.disabled = true;
+    decklistButton.value = 'To Decklist';
+    decklistButton.title = 'Resolve all the unidentified cards on the left first!';
+    
     const counts = {}
     for (const box of document.getElementById('nc-cards-container').children)
     {
@@ -449,7 +454,6 @@ const DoBanlistCheck = (() =>
             banlistCheck.classList.remove('good','bad');
             banlistCheck.title = 'Please resolve all cards first!';
             banlistCheck.lastElementChild.innerText = '';
-            document.getElementById('nc-decklist').disabled = true;
             return;
         }
         counts[box.matchedCardId] = ((counts[box.matchedCardId] || 0) + box.count);
@@ -480,6 +484,7 @@ const DoBanlistCheck = (() =>
         }
     })();
     
+    decklistButton.value = '\u22EF';
     (async () =>
     {
         const cardIds = [];
@@ -502,9 +507,22 @@ const DoBanlistCheck = (() =>
         tag += (':'+encodeURIComponent('exported deck naming stuff NYI'));
         
         const decklistButton = document.getElementById('nc-decklist');
-        decklistButton.decklistTag = tag;
         decklistButton.disabled = false;
-    })();
+        decklistButton.value = 'To Decklist';
+        decklistButton.title = '';
+        decklistButton.decklistTag = tag;
+    })().catch((e) =>
+    {
+        console.error(e);
+        if (e instanceof TypeError)
+            e = 'Are we allowed to load data from db.ygoprodeck.com?';
+        if (e instanceof ReferenceError)
+            e = 'Are we allowed to load scripts from yugiohdeck.github.io?';
+        const decklistButton = document.getElementById('nc-decklist');
+        decklistButton.disabled = true;
+        decklistButton.value = 'To Decklist';
+        decklistButton.title = ('Failed to load decklist link:\n'+e);
+    });
 });
 const ScheduleBanlistCheck = (() =>
 {
