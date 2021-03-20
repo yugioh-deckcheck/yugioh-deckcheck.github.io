@@ -27,7 +27,12 @@
     </head>
     
     <body class="state-noscript">
-        <script type="text/javascript">document.body.className = 'state-noasync'</script>
+        <script type="text/javascript">
+            // ok, we can at least run first-party javascript
+            document.body.className = 'state-loading';
+            // this will be cleared in ygodecklist.js if loading that succeeds
+            window.noasyncTimeout = window.setTimeout(function() { document.body.className = 'state-noasync'; }, 2500);
+        </script>
         <div id="noscript-box">
             <div>
                 <img src="img/noscript.png">

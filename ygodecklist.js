@@ -863,3 +863,4 @@ document.getElementById('pdf-input').addEventListener('change', async function()
 });
 
 document.body.className = 'state-choose';
+window.clearTimeout(window.noasyncTimeout);
