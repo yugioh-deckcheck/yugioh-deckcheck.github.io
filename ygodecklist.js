@@ -794,7 +794,7 @@ const SetupSingle = ((container, tag, entries, countCheck) =>
     else
     {
         checkElm.classList.add('bad');
-        checkElm.lastElementChild.innerText = '✘\uFE0E';
+        checkElm.lastElementChild.innerText = (''+total);
     }
 });
 
