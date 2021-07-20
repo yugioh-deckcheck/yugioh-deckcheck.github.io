@@ -19,7 +19,11 @@ document.getElementById('neuronparse-close').addEventListener('click', () =>
 const cardname = (async (cardid) =>
 {
     const carddata = await (await fetch('https://db.ygorganization.com/data/card/'+cardid)).json();
-    return (carddata.cardData.en || carddata.cardData.ja).name;
+    const n = (carddata.cardData.en || carddata.cardData.ja).name;
+    if (n.length > 25)
+        return n.substr(0,25)+'…';
+    else
+        return n;
 });
 
 const headerscore = ((ctx, firstY) =>
@@ -60,14 +64,18 @@ window.ParseNeuronExport = async function(file)
 {
     ClearLogs(logger);
 
-    const image = await createImageBitmap(file);
+    const image = await createImageBitmap(file).catch(() => { throw 'Unsupported/unrecognized image format' });
     
+    Log(logger, '='.repeat(20));
     Log(logger, 'This is a demonstration of Neuron parsing. Full functionality NYI. Be advised that the \'Continue\' button will do nothing.');
+    Log(logger, '='.repeat(20));
+    Log(logger, ' ');
     
     Log(logger, 'Image loaded.');
     Log(logger, 'Dimensions: '+image.width+'px wide, '+image.height+'px high.');
     
     const height = Math.round(image.height*(496/image.width));
+    console.log(image.width, image.height, height);
     if (image.width !== 496)
         Log(logger, 'Scaling to: 496px wide, '+height+'px high.');
 
@@ -85,7 +93,8 @@ window.ParseNeuronExport = async function(file)
         return;
     }
     
-    await EnsureScriptLoaded('neuron/cardident.js');
+    // ensure this actually gives us a render tick to avoid freezing
+    await Promise.all([EnsureScriptLoaded('neuron/cardident.js'), sleep(0)]);
     
     let top = 64+32;
     let decks = [];
@@ -141,7 +150,8 @@ window.ParseNeuronExport = async function(file)
     Log(logger, 'Found '+decks.length+' decks in image.');
     for (let i=0; i<decks.length; ++i)
     {
-        Log(logger, 'Deck #'+i+' ('+decks[i].length+' card(s)):');
+        Log(logger, ' ');
+        Log(logger, '=== Deck #'+i+' ('+decks[i].length+' card(s)):');
         for (const {x,y,current} of decks[i])
             Log(logger, '['+x+','+y+'] '+current.scores.total.toFixed(2)+'% '+(await cardname(current.cardId)));
     }
