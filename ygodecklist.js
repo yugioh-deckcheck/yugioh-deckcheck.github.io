@@ -39,6 +39,7 @@ document.getElementById('pdf-input').addEventListener('change', async function()
         }
     } catch (e) {
         console.error(e);
+        document.body.className = 'state-loading';
         document.getElementById('loading-box').lastElementChild.innerText = ('Failed: '+e);
         await sleep(5000);
         this.value = '';

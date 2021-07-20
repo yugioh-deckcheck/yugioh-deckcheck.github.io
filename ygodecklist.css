@@ -561,12 +561,21 @@ body.state-noscript, body.state-noasync
     height: 93vh;
 }
 
-#neuron-canvas-column
+#neuron-canvases-container
 {
     flex-basis: 0;
     flex-grow: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
+    position: relative;
+}
+
+#neuron-canvases-container > div
+{
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     
     display: flex;
     flex-direction: column;
@@ -574,10 +583,13 @@ body.state-noscript, body.state-noasync
     justify-content: center;
 }
 
-#neuron-canvas-original
+#neuron-canvases-container > div > canvas
 {
     max-height: 100%;
 }
+
+#neuron-canvas-generated.redrawing { visibility: hidden; }
+#neuron-canvas-generated.hidden { visibility: hidden; }
 
 #neuronparse-right-box
 {

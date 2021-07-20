@@ -1,12 +1,39 @@
 (()=>{
     
+const __artCache = {}
+const getArtwork = ((cardId,artId) => (__artCache[cardId+','+artId] || (__artCache[cardId+','+artId] = (async () =>
+{
+    const img = new Image();
+    img.src = ('https://db.ygorganization.com/artwork/'+cardId+'/'+artId);
+    await img.decode();
+    return createImageBitmap(img);
+})())));
+    
 const IMAGE_DB = (async () =>
 {
     return (await fetch('neuron/imagedb.json')).json();
 })();
 
+let CURRENT_DATA = null;
+
 const logger = document.getElementById('neuronparse-log');
 const origCanvas = document.getElementById('neuron-canvas-original');
+const genCanvas = document.getElementById('neuron-canvas-generated');
+
+let __tickItv = 0;
+
+const DisableTicks = (() =>
+{
+    window.clearInterval(__tickItv);
+    __tickItv = 0;
+    genCanvas.classList.remove('hidden');
+});
+
+const EnableTicks = (() =>
+{
+    if (__tickItv) return;
+    __tickItv = window.setInterval(() => { genCanvas.classList.toggle('hidden'); }, 1000);
+});
 
 document.getElementById('neuronparse-close').addEventListener('click', () =>
 {
@@ -24,6 +51,64 @@ const cardname = (async (cardid) =>
         return n.substr(0,25)+'…';
     else
         return n;
+});
+
+const VisualizeCurrentData = (async () =>
+{
+    const decks = CURRENT_DATA;
+    
+    Log(logger, 'Visualizing parse result, please wait...');
+    DisableTicks();
+    
+    genCanvas.classList.add('redrawing');
+    const genCtx = genCanvas.getContext('2d');
+    genCtx.fillStyle = '#555';
+    genCtx.fillRect(0, 0, genCanvas.width, genCanvas.height);
+    
+    await Promise.all(decks.map(async ({top, which, cards}) => 
+    {
+        console.log(which, top, cards);
+        
+        genCtx.fillStyle = '#335';
+        genCtx.fillRect(0, 0, 496, 64);
+        
+        genCtx.fillStyle = '#fff';
+        genCtx.textAlign = 'left';
+        genCtx.textBaseline = 'middle';
+        genCtx.font = '18px bold Monospace';
+        genCtx.fillText('Neuron export parse results:', 10, 32, 476);
+        
+        
+        genCtx.fillStyle = '#113';
+        genCtx.fillRect(0, top, 496, -32);
+        
+        genCtx.fillStyle = '#fff';
+        genCtx.textAlign = 'left';
+        genCtx.textBaseline = 'middle';
+        genCtx.font = '14px Monospace';
+        genCtx.fillText(which+' Deck: '+cards.length+' cards', 15, top-16, 466);
+        
+        await Promise.all(cards.map(async ({xLeft, yTop, current: {cardId, artId}}) =>
+        {
+            genCtx.drawImage(await getArtwork(cardId, artId), xLeft, yTop, 48, 72);
+        }));
+    }));
+
+    genCanvas.classList.remove('redrawing');
+    Log(logger, 'Visualizing done.');
+    
+    EnableTicks();
+    
+    /* debug logging start */
+    Log(logger, 'Found '+decks.length+' decks in image.');
+    for (let i=0; i<decks.length; ++i)
+    {
+        Log(logger, ' ');
+        Log(logger, '=== '+decks[i].which+' Deck ('+decks[i].cards.length+' card(s)):');
+        for (const {gridX,gridY,current} of decks[i].cards)
+            Log(logger, '['+gridX+','+gridY+'] '+current.scores.total.toFixed(2)+'% '+(await cardname(current.cardId)));
+    }
+    /* debug logging end */
 });
 
 const headerscore = ((ctx, firstY) =>
@@ -62,6 +147,9 @@ const edgescore = ((ctx, x, firstY) =>
 
 window.ParseNeuronExport = async function(file)
 {
+    CURRENT_DATA = null;
+
+    DisableTicks();
     ClearLogs(logger);
 
     const image = await createImageBitmap(file).catch(() => { throw 'Unsupported/unrecognized image format' });
@@ -84,6 +172,10 @@ window.ParseNeuronExport = async function(file)
     
     const origCtx = origCanvas.getContext('2d');
     origCtx.drawImage(image, 0, 0, 496, height);
+    
+    genCanvas.width = 496;
+    genCanvas.height = height;
+    genCanvas.getContext('2d').clearRect(0, 0, 496, height);
     
     document.body.className = 'state-neuronparse';
     
@@ -114,11 +206,11 @@ window.ParseNeuronExport = async function(file)
         }
         
         let cards = [];
-        for (let y=0; y<rows; ++y)
+        for (let gridY=0; gridY<rows; ++gridY)
         {
-            const yTop = top + 72*y;
+            const yTop = top + 72*gridY;
             let xLeft = 0;
-            for (let x=0; x<10; ++x, xLeft += 48)
+            for (let gridX=0; gridX<10; ++gridX, xLeft += 48)
             {
                 const margin1score = edgescore(origCtx, xLeft+1, yTop);
                 const margin2score = edgescore(origCtx, xLeft+2, yTop);
@@ -135,26 +227,44 @@ window.ParseNeuronExport = async function(file)
                     .sort((a,b) => (b.scores.total - a.scores.total));
 
                 cards.push({
-                    x,
-                    y,
+                    gridX,
+                    gridY,
+                    xLeft,
+                    yTop,
                     current: scores[0],
                     scores
                 });
             }
         }
-        decks.push(cards)
+        decks.push({top, cards})
         top += 72*rows; // card height
         top += 32;      // skip header
     }
     
-    Log(logger, 'Found '+decks.length+' decks in image.');
-    for (let i=0; i<decks.length; ++i)
+    if (!decks.length)
     {
-        Log(logger, ' ');
-        Log(logger, '=== Deck #'+i+' ('+decks[i].length+' card(s)):');
-        for (const {x,y,current} of decks[i])
-            Log(logger, '['+x+','+y+'] '+current.scores.total.toFixed(2)+'% '+(await cardname(current.cardId)));
+        Log(logger, 'Failed to find any decks. Not sure what happened.');
+        return;
     }
+    
+    if (decks.length > 3)
+    {
+        Log(logger, 'Found too many Decks ('+decks.length+'), expected no more than 3.');
+        return;
+    }
+    
+    decks[0].which = 'Main';
+    if (decks.length === 3)
+    {
+        decks[1].which = 'Extra';
+        decks[2].which = 'Side';
+    }
+    else // @todo
+        decks[1].which = 'Side';
+    
+    CURRENT_DATA = decks;
+    
+    await VisualizeCurrentData();
 };
 
 })();
