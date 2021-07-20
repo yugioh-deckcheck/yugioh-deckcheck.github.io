@@ -3,7 +3,8 @@ body:not(.state-noasync)     #noasync-box,
 body:not(.state-loading)     #loading-box,
 body:not(.state-choose)      #choose-box,
 body:not(.state-assign)      #assign-box,
-body:not(.state-namecorrect) #namecorrect-box
+body:not(.state-namecorrect) #namecorrect-box,
+body:not(.state-neuronparse) #neuronparse-box
 { display: none; }
 
 html, body { margin: 0; height: 100%; width: 100%; }
@@ -319,7 +320,7 @@ body.state-noscript, body.state-noasync
     align-items: stretch;
 }
 
-#assign-log
+.logger
 {
     font-family: Monospace;
     
@@ -339,8 +340,8 @@ body.state-noscript, body.state-noasync
     flex-grow: 1;
 }
 
-#assign-log span { white-space: pre-wrap; }
-#assign-log > :first-child { margin-bottom: auto; }
+.logger span { white-space: pre-wrap; }
+.logger > :first-child { margin-bottom: auto; }
 
 #namecorrect-box
 {
@@ -544,3 +545,68 @@ body.state-noscript, body.state-noasync
 #nc-back { background: #a00; }
 #nc-decklist { background: #0a0; }
 #nc-decklist:disabled { background: #393; }
+
+#neuronparse-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    
+    padding: 1vw 1vh;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    width: 93vw;
+    height: 93vh;
+}
+
+#neuron-canvas-column
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#neuron-canvas-original
+{
+    max-height: 100%;
+}
+
+#neuronparse-right-box
+{
+    flex-basis: 20vw;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-left: 1vw;
+    
+    padding: 1vmin;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column
+}
+
+#neuronparse-main-buttons
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+#neuronparse-main-buttons > input
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    font-weight: bold;
+}
+#neuronparse-close { background: #a00; }
+#neuronparse-next { background: #0a0; }

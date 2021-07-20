@@ -20,8 +20,7 @@
         <link rel="prefetch" href="img/locale_es.png" as="image">
         <link rel="prefetch" href="img/locale_pt.png" as="image">
         
-        <script defer src="https://yugiohdeck.github.io/compression.js"></script>
-        <script defer src="include/pdf.js"></script>
+        <script defer src="util.js"></script>
         <script defer src="carddata.js"></script>
         <script defer src="ygodecklist.js"></script>
     </head>
@@ -74,7 +73,7 @@
             <span>Loading...</span>
         </div>
         <label id="choose-box" for="pdf-input">
-            <span>Select Decklist PDF:</span> <input type="file" accept="application/pdf,.pdf" id="pdf-input" />
+            <span>Select Decklist (PDF/Neuron):</span> <input type="file" accept="application/pdf,image/jpeg,image/*,.pdf,.jpg,.jpeg,.png" id="pdf-input" />
         </label>
         <div id="assign-box">
             <div id="pdf-column">
@@ -110,7 +109,7 @@
                         <input type="button" id="assign-flip" value="Flip Extra & Side">
                     </div>
                 </div>
-                <div id="assign-log">
+                <div id="assign-log" class="logger">
                 </div>
             </div>
         </div>
@@ -128,6 +127,19 @@
                     <div id="nc-check-main"><label>Main is 40-60?</label><span></span></div>
                     <div id="nc-check-extra"><label>Extra is 0/15?</label><span></span></div>
                     <div id="nc-check-side"><label>Side is 15?</label><span></span></div>
+                </div>
+            </div>
+        </div>
+        <div id="neuronparse-box">
+            <div id="neuron-canvas-column">
+                <canvas id="neuron-canvas-original"></canvas>
+            </div>
+            <div id="neuronparse-right-box">
+                <div id="neuronparse-main-buttons">
+                    <input type="button" id="neuronparse-close" value="Close Deck">
+                    <input type="button" id="neuronparse-next" value="Continue">
+                </div>
+                <div id="neuronparse-log" class="logger">
                 </div>
             </div>
         </div>
