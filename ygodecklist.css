@@ -4,7 +4,8 @@ body:not(.state-loading)     #loading-box,
 body:not(.state-choose)      #choose-box,
 body:not(.state-assign)      #assign-box,
 body:not(.state-namecorrect) #namecorrect-box,
-body:not(.state-neuronparse) #neuronparse-box
+body:not(.state-neuronparse) #neuronparse-box,
+body:not(.state-neuronlist)  #neuronlist-box
 { display: none; }
 
 html, body { margin: 0; height: 100%; width: 100%; }
@@ -248,6 +249,7 @@ body.state-noscript, body.state-noasync
 {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
 }
 #assign-main-buttons > input
@@ -310,7 +312,7 @@ body.state-noscript, body.state-noasync
     text-align: center;
 }
 .checks-box > div.good > span { background: rgba(0,255,0,.3); }
-.checks-box > div.bad  > span { background: rgba(255,0,0,.7); }
+.checks-box > div.bad  > span { background: rgba(255,0,0,.7); line-height: 1.4em; }
 .checks-box > div > span:empty { visibility: hidden; }
 
 #assign-buttons-box
@@ -532,6 +534,7 @@ body.state-noscript, body.state-noasync
 {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
 }
 #nc-main-controls > input
@@ -586,6 +589,7 @@ body.state-noscript, body.state-noasync
 #neuron-canvases-container > div > canvas
 {
     max-height: 100%;
+    max-width: 100%;
 }
 
 #neuron-canvas-generated.redrawing { visibility: hidden; }
@@ -747,7 +751,7 @@ body.state-noscript, body.state-noasync
     justify-content: flex-start;
     
     flex-basis: 0;
-    flex-grow: 3;
+    flex-grow: .5;
 }
 
 #neuronparse-controls > div
@@ -770,6 +774,7 @@ body.state-noscript, body.state-noasync
 {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
 }
 #neuronparse-main-buttons > input
@@ -781,3 +786,146 @@ body.state-noscript, body.state-noasync
 #neuronparse-close { background: #a00; }
 #neuronparse-next { background: #0a0; }
 #neuronparse-next:disabled { background: #8a8; }
+
+#neuronlist-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    
+    padding: 1vw 1vh;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    width: 93vw;
+    height: 93vh;
+}
+
+#neuronlist-left-box
+{
+    flex-grow: 1;
+    
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.neuronlist-deck-box
+{
+    position: relative;
+    min-width: 16vw;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.neuronlist-deck-box + .neuronlist-deck-box { margin-left: 1vw; }
+
+.neuronlist-header
+{
+    position: absolute;
+    left: 1vw;
+    top: 0;
+    
+    height: 1.4em;
+    line-height: 1.4em;
+    
+    font-weight: bold;
+    font-size: 1.2em;
+    white-space: nowrap;
+    
+    padding: .3em;
+    border: .2em solid #777;
+    border-radius: 1vmin;
+    
+    background: #ccc;
+}
+
+.neuronlist-container
+{
+    background: #ccc;
+    
+    margin-top: 1em;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    padding: 1vmin;
+    padding-top: 1.7em;
+    
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+}
+
+.neuronlist-card
+{
+    padding: 0 .2vw;
+    border-radius: .5vmin;
+}
+
+.neuronlist-card.error
+{
+    background: rgba(255,0,0,.4);
+}
+
+.neuronlist-card-name
+{
+    margin-left: .3em;
+}
+
+.neuronlist-card-name.loading
+{
+    color: #888;
+    font-style: italic;
+}
+
+#neuronlist-controls
+{
+    flex-basis: 12vw;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-left: 1vw;
+    
+    padding: 1vmin;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column;
+}
+
+#neuronlist-controls > div
+{
+    padding: .5vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+#neuronlist-controls > div + div { margin-top: 1vmin; }
+#neuronlist-controls > div > header
+{
+    align-self: flex-start;
+    margin-left: 2%;
+    margin-bottom: 1%;
+    font-weight: bold;
+}
+
+#neuronlist-main-controls
+{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+#neuronlist-main-controls > input
+{
+    min-width: 0;
+    flex-basis: 0;
+    flex-grow: 1;
+    flex-shrink: 0;
+    font-weight: bold;
+}
+#neuronlist-back { background: #a00; }
+#neuronlist-decklist { background: #0a0; }
+#neuronlist-decklist:disabled { background: #393; }

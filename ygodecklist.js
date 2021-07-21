@@ -1,16 +1,19 @@
-document.getElementById('pdf-input').value = '';
-document.getElementById('pdf-input').addEventListener('change', async function()
+(() => {
+
+const pdfInput = document.getElementById('pdf-input');
+
+pdfInput.value = '';
+pdfInput.addEventListener('change', async () =>
 {
-    if (!this.files.length)
+    if (!pdfInput.files.length)
         return;
     if (document.body.className !== 'state-choose')
         return;
     
-    const file = this.files[0];
+    const file = pdfInput.files[0];
     if (!file) return;
 
-    document.getElementById('loading-box').lastElementChild.innerText = ('Loading...');
-    document.body.className = 'state-loading';
+    StartLoading();
 
     try
     {
@@ -39,13 +42,24 @@ document.getElementById('pdf-input').addEventListener('change', async function()
         }
     } catch (e) {
         console.error(e);
-        document.body.className = 'state-loading';
-        document.getElementById('loading-box').lastElementChild.innerText = ('Failed: '+e);
+        StartLoading();
+        SetLoadingMessage('Failed: '+e);
         await sleep(5000);
-        this.value = '';
+        pdfInput.value = '';
         document.body.className = 'state-choose';
     }
 });
 
+/*const chooseBox = document.getElementById('choose-box');
+chooseBox.addEventListener('dragover', (e) => { e.preventDefault(); });
+chooseBox.addEventListener('dragenter', (e) => { e.preventDefault(); });
+chooseBox.addEventListener('drop', (e) =>
+{
+    e.preventDefault();
+    // foiled by CORS (for now)
+});*/
+
 document.body.className = 'state-choose';
 window.clearTimeout(window.noasyncTimeout);
+
+})();

@@ -26,4 +26,15 @@ window.ClearLogs = ((box) => {
         box.removeChild(box.lastElementChild);
 });
 
+window.StartLoading = (() =>
+{
+    window.SetLoadingMessage('Loading...');
+    document.body.className = 'state-loading';
+});
+
+window.SetLoadingMessage = ((m) =>
+{
+    document.getElementById('loading-box').lastElementChild.innerText = m;
+});
+
 })();

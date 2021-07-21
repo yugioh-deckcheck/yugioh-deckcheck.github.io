@@ -345,7 +345,7 @@ document.getElementById('assign-next').addEventListener('click', () =>
         Log(logger, 'You have to parse the deck list first!','warn');
         return;
     }
-    document.body.className = 'state-loading';
+    StartLoading();
     window.NamecorrectSetup(assignmentRemap(CURRENT_ASSIGNMENT));
 });
 
@@ -462,8 +462,11 @@ const DoBanlistCheck = (() =>
         const errors = (await Promise.all(Object.entries(counts).map(async ([id,count]) =>
         {
             const cardData = (await GetCardData(id)).cardData.en;
-            const banStatus = cardData.banlistStatus;
-            const allowed = (isNaN(banStatus) ? 3 : banStatus);
+            const allowed = (
+                (!cardData || (cardData.thisSrc.type !== 2)) ? 0 :
+                isNaN(cardData.banlistStatus) ? 3 :
+                cardData.banlistStatus
+            );
             if (allowed < count)
                 return (cardData.name + ': includes '+count+', allowed '+allowed);
         }))).filter((e)=>(e));
@@ -494,8 +497,12 @@ const DoBanlistCheck = (() =>
         for (const box of document.getElementById('nc-cards-container').children)
             promises[box.which].push(passcodeMap[box.matchedCardId].then((c) => [c,box.count]));
         
-        await EnsureScriptLoaded('https://yugiohdeck.github.io/compression.js');
-        const [main, extra, side] = await Promise.all([Promise.all(promises.main), Promise.all(promises.extra), Promise.all(promises.side)]);
+        const [main, extra, side] = await Promise.all([
+            Promise.all(promises.main),
+            Promise.all(promises.extra),
+            Promise.all(promises.side),
+            EnsureScriptLoaded('https://yugiohdeck.github.io/compression.js')
+        ]);
         const [mainC, extraC, sideC] = [CompressDeckData(main), CompressDeckData(extra), CompressDeckData(side)];
         
         let tag = mainC;
@@ -519,7 +526,7 @@ const DoBanlistCheck = (() =>
             e = 'Are we allowed to load scripts from yugiohdeck.github.io?';
         const decklistButton = document.getElementById('nc-decklist');
         decklistButton.disabled = true;
-        decklistButton.value = 'To Decklist';
+        decklistButton.value = 'Failed 😔\uFE0E';
         decklistButton.title = ('Failed to load decklist link:\n'+e);
     });
 });
