@@ -73,14 +73,21 @@ window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artw
     {
         const img = new Image();
         img.src = ('https://db.ygorganization.com/artwork/'+cardId+'/'+artId);
-        try {
-            await img.decode();
-        } catch (e) {
-            console.error(cardId, artId, e);
-            img.src = 'no_data_card.png';
-            delete artworkCache[cardId+','+artId];
-            await img.decode();
+        for (let i=0; i<5; ++i)
+        {
+            try {
+                await img.decode();
+                return img;
+            } catch (e) {
+                console.error(cardId, artId, i, e);
+                baton.drop();
+                await baton.grab();
+                continue;
+            }
         }
+        img.src = 'no_data_card.png';
+        delete artworkCache[cardId+','+artId];
+        await img.decode();
         return img;
     } finally { baton.drop(); }
 })())));

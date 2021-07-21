@@ -50,7 +50,7 @@ pdfInput.addEventListener('change', async () =>
     }
 });
 
-/*const chooseBox = document.getElementById('choose-box');
+/*const chooseBox = document.getElementById('choose-elm');
 chooseBox.addEventListener('dragover', (e) => { e.preventDefault(); });
 chooseBox.addEventListener('dragenter', (e) => { e.preventDefault(); });
 chooseBox.addEventListener('drop', (e) =>
