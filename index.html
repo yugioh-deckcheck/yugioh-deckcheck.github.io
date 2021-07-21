@@ -138,11 +138,30 @@
                 <div id="neuron-canvas-container-generated">
                     <canvas id="neuron-canvas-generated"></canvas>
                 </div>
+                <div id="neuron-canvas-container-overlay">
+                    <canvas id="neuron-canvas-overlay"></canvas>
+                </div>
+            </div>
+            <div id="neuronparse-edit-box">
+                <img id="neuronparse-edit-box-background" src="mask.png"> <!--@todo-->
+                <div id="neuronparse-edit-info-row">
+                    <canvas id="neuronparse-edit-show"></canvas>
+                    <span>choose the matching card:</span>
+                </div>
+                <div id="neuronparse-edit-grid">
+                </div>
+                <div id="neuronparse-edit-buttons">
+                    <input type="button" id="neuronparse-edit-left" value="&lt;">
+                    <div id="neuronparse-edit-status"></div>
+                    <input type="button" id="neuronparse-edit-right" value="&gt;">
+                </div>
             </div>
             <div id="neuronparse-right-box">
-                <div id="neuronparse-main-buttons">
-                    <input type="button" id="neuronparse-close" value="Close Deck">
-                    <input type="button" id="neuronparse-next" value="Continue">
+                <div id="neuronparse-controls">
+                    <div id="neuronparse-main-buttons">
+                        <input type="button" id="neuronparse-close" value="Close Deck">
+                        <input type="button" id="neuronparse-next" value="Continue">
+                    </div>
                 </div>
                 <div id="neuronparse-log" class="logger">
                 </div>

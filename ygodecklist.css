@@ -591,9 +591,140 @@ body.state-noscript, body.state-noasync
 #neuron-canvas-generated.redrawing { visibility: hidden; }
 #neuron-canvas-generated.hidden { visibility: hidden; }
 
+#neuron-canvases-container * { pointer-events: none; }
+#neuron-canvas-original { pointer-events: all; }
+
+#neuronparse-edit-box
+{
+    flex-basis: 16vw;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-left: 1vw;
+    
+    padding: .5vw;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column;
+}
+
+#neuronparse-edit-box.content #neuronparse-edit-box-background
+{
+    display: none;
+}
+
+#neuronparse-edit-box:not(.content) > :not(#neuronparse-edit-box-background)
+{
+    display: none;
+}
+
+#neuronparse-edit-info-row
+{
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+#neuronparse-edit-show
+{
+    width: 3vw;
+    height: 4.5vw;
+    margin-right: .5vw;
+}
+
+#neuronparse-edit-grid
+{
+    margin: .5vh 0;
+    padding: .25vh 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow-y: auto;
+    border-radius: 1vmin;
+    background: #bbb;
+    border: 1px solid #777;
+    
+    display: grid;
+    grid-template-columns: 3.75vw 3.75vw 3.75vw 3.75vw;
+    justify-content: space-evenly;
+    align-content: flex-start;
+}
+
+#neuronparse-edit-grid > div
+{
+    width: 3.5vw;
+    height: 5.25vw;
+    position: relative;
+    margin: .125vw;
+}
+
+#neuronparse-edit-grid > div > img
+{
+    width: 100%;
+    height: 100%;
+}
+
+#neuronparse-edit-grid > div > span
+{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: .25vmin;
+    background: rgba(0,0,0,0.8);
+    
+    font-size: 1em;
+    font-weight: bold;
+    font-family: Monospace;
+    color: #fff;
+    
+    pointer-events: none;
+    
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#neuronparse-edit-buttons
+{
+    display: flex;
+    flex-direction: row;
+    align-items: middle;
+}
+
+#neuronparse-edit-left, #neuronparse-edit-right
+{
+    padding: .25vmin;
+    border: 1px solid #000;
+    border-radius: .5vmin;
+    background: #ddd;
+}
+#neuronparse-edit-left:hover:not(:disabled), #neuronparse-edit-right:hover:not(:disabled)
+{
+    background: #eef;
+}
+#neuronparse-edit-left:active:not(:disabled), #neuronparse-edit-right:active:not(:disabled)
+{
+    background: #bbb;
+    border-style: inset;
+}
+#neuronparse-edit-left:disabled, #neuronparse-edit-right:disabled
+{
+    background: #ddd;
+    color: #999;
+    border-color: #aaa;
+}
+
+#neuronparse-edit-status
+{
+    flex-grow: 1;
+    text-align: center;
+}
+
 #neuronparse-right-box
 {
-    flex-basis: 20vw;
+    flex-basis: 12vw;
     flex-grow: 0;
     flex-shrink: 0;
     min-width: 0;
@@ -605,7 +736,34 @@ body.state-noscript, body.state-noasync
     border-radius: 1vmin;
     
     display: flex;
-    flex-direction: column
+    flex-direction: column;
+}
+
+#neuronparse-controls
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    
+    flex-basis: 0;
+    flex-grow: 3;
+}
+
+#neuronparse-controls > div
+{
+    padding: .5vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+#neuronparse-controls > div + div { margin-top: 1vmin; }
+#neuronparse-controls > div > header
+{
+    align-self: flex-start;
+    margin-left: 2%;
+    margin-bottom: 1%;
+    font-weight: bold;
 }
 
 #neuronparse-main-buttons
