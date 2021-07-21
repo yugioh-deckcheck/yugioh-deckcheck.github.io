@@ -780,3 +780,4 @@ body.state-noscript, body.state-noasync
 }
 #neuronparse-close { background: #a00; }
 #neuronparse-next { background: #0a0; }
+#neuronparse-next:disabled { background: #8a8; }

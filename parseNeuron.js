@@ -11,6 +11,7 @@ const logger = document.getElementById('neuronparse-log');
 const origCanvas = document.getElementById('neuron-canvas-original');
 const genCanvas = document.getElementById('neuron-canvas-generated');
 const overlayCanvas = document.getElementById('neuron-canvas-overlay');
+const nextButton = document.getElementById('neuronparse-next');
 
 let __tickItv = 0;
 
@@ -24,7 +25,29 @@ const DisableTicks = (() =>
 const EnableTicks = (() =>
 {
     if (__tickItv) return;
-    __tickItv = window.setInterval(() => { genCanvas.classList.toggle('hidden'); }, 1000);
+    
+    nextButton.timer = 3;
+    nextButton.disabled = true;
+    nextButton.disabledForTimer = true;
+    if (!nextButton.disabledForCard)
+        nextButton.value = 'Wait 3…';
+
+    __tickItv = window.setInterval(() =>
+    {
+        genCanvas.classList.toggle('hidden');
+        
+        if (!nextButton.timer) return;
+        if (!--nextButton.timer)
+        {
+            nextButton.disabledForTimer = false;
+            
+            nextButton.disabled = nextButton.disabledForCard;
+            if (!nextButton.disabledForCard)
+                nextButton.value = 'Confirm';
+        }
+        else if (!nextButton.disabledForCard)
+            nextButton.value = ('Wait '+nextButton.timer+'…');
+    }, 1000);
 });
 
 document.getElementById('neuronparse-close').addEventListener('click', () =>
@@ -49,7 +72,7 @@ const VisualizeCurrentData = (async () =>
 {
     const decks = CURRENT_DATA;
     
-    Log(logger, 'Visualizing parse result, please wait...');
+    Log(logger, 'Visualizing, please wait...');
     DisableTicks();
     
     genCanvas.classList.add('redrawing');
@@ -114,6 +137,11 @@ const RedrawSelectedGrid = (() =>
         const {cardId, artId, scores} = data;
         const elm = document.createElement('div');
         elm.addEventListener('click', () => {
+            if (__selectedCard.current === data)
+            {
+                SetSelectedCard(null)
+                return;
+            }
             __selectedCard.current = data;
             SetSelectedCard(null);
             VisualizeCurrentData();
@@ -151,9 +179,19 @@ SetSelectedCard = ((card) =>
     __selectedCard = card;
     if (!card)
     {
+        nextButton.disabledForCard = false;
+        nextButton.disabled = nextButton.disabledForTimer;
+        if (!nextButton.disabledForTimer)
+            nextButton.value = 'Confirm';
+        else
+            nextButton.value = ('Wait '+nextButton.timer+'…');
         document.getElementById('neuronparse-edit-box').classList.remove('content');
         return;
     }
+    
+    nextButton.disabled = true;
+    nextButton.disabledForCard = true;
+    nextButton.value = '-';
     
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0, 0, 496, overlayCanvas.height);
@@ -246,16 +284,16 @@ window.ParseNeuronExport = async function(file)
     const image = await createImageBitmap(file).catch(() => { throw 'Unsupported/unrecognized image format' });
     
     Log(logger, '='.repeat(20));
-    Log(logger, 'This is a demonstration of Neuron parsing. Full functionality NYI. Be advised that the \'Continue\' button will do nothing.');
+    Log(logger, 'This is a demonstration of Neuron parsing. Full functionality NYI. Be advised that the \'Confirm\' button will do nothing.');
     Log(logger, '='.repeat(20));
     Log(logger, ' ');
     
     Log(logger, 'Image loaded.');
-    Log(logger, 'Dimensions: '+image.width+'px wide, '+image.height+'px high.');
+    Log(logger, 'Dims: '+image.width+'px by '+image.height+'px.');
     
     const height = Math.round(image.height*(496/image.width));
     if (image.width !== 496)
-        Log(logger, 'Scaling to: 496px wide, '+height+'px high.');
+        Log(logger, 'Conv: 496px by '+height+'px.');
 
     origCanvas.width = 496;
     origCanvas.height = height;
@@ -370,7 +408,15 @@ window.ParseNeuronExport = async function(file)
         document.body.className = 'state-neuronparse';
     } catch (e) {
         console.error(e);
-        Log(logger, 'Failed: '+e);
+        Log(logger, ' ');
+        Log(logger, '='.repeat(20));
+        Log(logger, 'Failed:');
+        Log(logger, ''+e);
+        Log(logger, '='.repeat(20));
+        
+        nextButton.disabled = true;
+        nextButton.value = 'Failed 😔\uFE0E';
+        
         document.body.className = 'state-neuronparse';
     }
 };
