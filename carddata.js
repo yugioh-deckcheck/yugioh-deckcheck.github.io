@@ -10,7 +10,7 @@ const dropLands = ((baton) =>
 
 class RequestThrottle
 {
-    constructor() { this.waiters = null; }
+    constructor(timeout) { this.waiters = null; this.timeout = timeout; }
     grab()
     {
         if (this.waiters === null)
@@ -22,7 +22,7 @@ class RequestThrottle
     }
     drop()
     {
-        window.setTimeout(dropLands, 100, this);
+        window.setTimeout(dropLands, this.timeout, this);
     }
 };
 
@@ -62,7 +62,30 @@ window.GetCardData = ((id) =>
     return p;
 });
 
-const passcodeBaton = new RequestThrottle();
+const artworkBaton0 = new RequestThrottle(1);
+const artworkBaton1 = new RequestThrottle(1);
+const artworkCache = {};
+window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artworkCache[cardId+','+artId] = (async ()=>
+{
+    const baton = ((cardId&1) ? artworkBaton1 : artworkBaton0);
+    await baton.grab();
+    try
+    {
+        const img = new Image();
+        img.src = ('https://db.ygorganization.com/artwork/'+cardId+'/'+artId);
+        try {
+            await img.decode();
+        } catch (e) {
+            console.error(cardId, artId, e);
+            img.src = 'no_data_card.png';
+            delete artworkCache[cardId+','+artId];
+            await img.decode();
+        }
+        return img;
+    } finally { baton.drop(); }
+})())));
+
+const passcodeBaton = new RequestThrottle(100);
 const GetPasscodes = (async (ids) =>
 {
     const reverse = {};

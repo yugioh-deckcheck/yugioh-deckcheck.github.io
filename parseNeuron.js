@@ -1,20 +1,5 @@
 (()=>{
     
-const __artCache = {}
-const getArtwork = ((cardId,artId) => (__artCache[cardId+','+artId] || (__artCache[cardId+','+artId] = (async () =>
-{
-    const img = new Image();
-    img.src = ('https://db.ygorganization.com/artwork/'+cardId+'/'+artId);
-    try {
-        await img.decode();
-    } catch (e) {
-        img.src = 'no_data_card.png';
-        delete __artCache[cardId+','+artId];
-        await img.decode();
-    }
-    return img;
-})())));
-    
 const IMAGE_DB = (async () =>
 {
     return (await fetch('neuron/imagedb.json')).json();
@@ -95,7 +80,7 @@ const VisualizeCurrentData = (async () =>
         
         await Promise.all(cards.map(async ({xLeft, yTop, current: {cardId, artId}}) =>
         {
-            genCtx.drawImage(await getArtwork(cardId, artId), xLeft, yTop, 48, 72);
+            genCtx.drawImage(await GetArtwork(cardId, artId), xLeft, yTop, 48, 72);
         }));
     }));
 
@@ -135,7 +120,7 @@ const RedrawSelectedGrid = (() =>
         });
         
         const img = document.createElement('img');
-        getArtwork(cardId, artId).then((a) => { img.src = a.src; });
+        GetArtwork(cardId, artId).then((a) => { img.src = a.src; });
         elm.appendChild(img);
         
         const span = document.createElement('span');
@@ -340,6 +325,8 @@ window.ParseNeuronExport = async function(file)
                         .filter((o)=>(o))
                         .sort((a,b) => (b.scores.total - a.scores.total));
 
+                    GetArtwork(scores[0].cardId, scores[0].artId); // prefetch
+                    
                     cards.push({
                         gridX,
                         gridY,
