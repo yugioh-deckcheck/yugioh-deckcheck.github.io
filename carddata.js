@@ -104,6 +104,9 @@ const GetPasscodes = (async (ids) =>
     }));
     
     const results = {};
+    for (const id of ids)
+        results[id] = null;
+
     while (names.length)
     {
         const thisNames = names.splice(-10,10);
@@ -114,7 +117,7 @@ const GetPasscodes = (async (ids) =>
             apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
         } finally { passcodeBaton.drop(); }
         
-        for (const data of apiData.data)
+        if (apiData.data) for (const data of apiData.data)
             results[reverse[data.name]] = data.id;
     }
     return results;
@@ -140,7 +143,7 @@ window.GetPasscodesFor = ((ids) =>
     const mainPromise = GetPasscodes(ids);
     for (const id of ids)
     {
-        const p = mainPromise.then((passcodes) => { return passcodes[id]; });
+        const p = mainPromise.then((passcodes) => { const r = passcodes[id]; if (r !== null) return r; else throw ('Failed to retrieve passcode for card #'+id); });
         passcodeCache[id] = p;
         results[id] = p;
     }
