@@ -109,10 +109,36 @@
                     </div>
                     <div id="assign-buttons-box">
                         <header>Useful buttons:</header>
+                        <input type="button" id="assign-ocr" value="Parse as image instead">
                         <input type="button" id="assign-flip" value="Flip Extra & Side">
                     </div>
                 </div>
                 <div id="assign-log" class="logger">
+                </div>
+            </div>
+        </div>
+        <div id="ocr-box">
+            <div id="ocr-canvases-container">
+                <div id="ocr-canvas-container-original">
+                    <canvas id="ocr-canvas-original"></canvas>
+                </div>
+                <div id="ocr-canvas-container-generated">
+                    <canvas id="ocr-canvas-generated"></canvas>
+                </div>
+                <div id="ocr-canvas-container-overlay">
+                    <canvas id="ocr-canvas-overlay"></canvas>
+                </div>
+            </div>
+            <div id="ocr-edit-box">
+            </div>
+            <div id="ocr-right-box">
+                <div id="ocr-controls">
+                    <div id="ocr-main-buttons">
+                        <input type="button" id="ocr-back" value="Go back">
+                        <input type="button" id="ocr-next" value="Confirm">
+                    </div>
+                </div>
+                <div id="ocr-log" class="logger">
                 </div>
             </div>
         </div>

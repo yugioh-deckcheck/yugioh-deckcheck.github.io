@@ -2,6 +2,7 @@
     
 const logger = document.getElementById('assign-log');
 
+let CURRENT_PDF_PAGE = null;
 // object with three keys - main, side, extra
 // each value is an array of two element arrays [countText, nameText], countText can be falsey
 let CURRENT_ASSIGNMENT = null;
@@ -273,6 +274,11 @@ const parsers = {
             parseFromLabel(sideLabel, cutoff, monLabel),
             parseFromLabel(extraLabel, cutoff, spellLabel)
         ];
+        
+        console.log(monster, spell, trap);
+        if (!monster.cards.length && !spell.cards.length && !trap.cards.length)
+            throw 'Failed to find any maindeck card data';
+
         return {
             main: monster.cards.concat(spell.cards, trap.cards),
             extra: extra.cards,
@@ -301,6 +307,15 @@ document.getElementById('assign-parse').addEventListener('click', () =>
         CURRENT_ASSIGNMENT = null;
     }
     drawAssignment();
+});
+
+document.getElementById('assign-ocr').addEventListener('click', async () =>
+{
+    if (document.body.className !== 'state-assign')
+        return;
+    StartLoading();
+    await EnsureScriptLoaded('parseOCR.js');
+    window.SetupOCRFromPDFPage('state-assign', CURRENT_PDF_PAGE);
 });
 
 document.getElementById('assign-flip').addEventListener('click', () =>
@@ -351,7 +366,7 @@ document.getElementById('assign-next').addEventListener('click', async () =>
     window.NamecorrectSetup('state-assign', assignmentRemap(CURRENT_ASSIGNMENT));
 });
 
-window.AssignPageSetup = function(width, height, textContent, annotations)
+const SetupAssignPage = async function(width, height, textContent, annotations)
 {
     ClearLogs(logger);
 
@@ -359,6 +374,9 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
     while (container.lastElementChild)
         container.removeChild(container.lastElementChild);
     
+    SetLoadingMessage('Processing PDF text data...');
+    await sleep(0);
+
     // we normalize the container to always be 90vmin in content height
     // this is the scaling factor of page pixels to vmin
     const scalingFactor = (90/height);
@@ -400,11 +418,11 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
         box.innerText = item.fieldValue;
         container.appendChild(box);
     }
-    
-    document.body.className = 'state-assign';
 
     // try to autodetect the type of pdf
     found : {
+        SetLoadingMessage('Parsing PDF text data...');
+        await sleep(0);
         for (const pdfType in parsers)
         {
             try
@@ -419,23 +437,26 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
             drawAssignment();
             Log(logger, 'Auto-detected form type: \''+pdfType+'\'.');
             document.getElementById('assign-alg').value = pdfType;
+            document.body.className = 'state-assign';
             break found;
         }
-        Log(logger, 'Failed to auto-detect form type.', 'warn');
-        CURRENT_ASSIGNMENT = null;
-        drawAssignment();
+        
+        SetLoadingMessage('Failed to process text data.\nFalling back to OCR parsing...');
+        await EnsureScriptLoaded('parseOCR.js');
+        window.SetupOCRFromPDFPage('state-choose', CURRENT_PDF_PAGE);
     }
 };
 
-})();
-
 window.ParsePDFFile = async function(file)
 {
-    await EnsureScriptLoaded('include/pdf.js');
+    await EnsureScriptLoaded('include/pdfjs/pdf.js');
     const PDFJS = window.pdfjsLib;
-    PDFJS.GlobalWorkerOptions.workerSrc = 'include/pdf.worker.js';
+    PDFJS.GlobalWorkerOptions.workerSrc = 'include/pdfjs/pdf.worker.js';
     const pdf = await PDFJS.getDocument(await file.arrayBuffer()).promise;
     const page = await pdf.getPage(1);
+    CURRENT_PDF_PAGE = page;
     const [textContent, annotations] = await Promise.all([page.getTextContent(), page.getAnnotations()]);
-    window.AssignPageSetup(page.view[2], page.view[3], textContent, annotations);
+    await SetupAssignPage(page.view[2], page.view[3], textContent, annotations);
 };
+
+})();

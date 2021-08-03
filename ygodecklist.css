@@ -3,6 +3,7 @@ body:not(.state-noasync)     #noasync-box,
 body:not(.state-loading)     #loading-box,
 body:not(.state-choose)      #choose-box,
 body:not(.state-assign)      #assign-box,
+body:not(.state-ocr)         #ocr-box,
 body:not(.state-namecorrect) #namecorrect-box,
 body:not(.state-neuronparse) #neuronparse-box,
 body:not(.state-decklist)    #decklist-box
@@ -370,6 +371,244 @@ body.state-noscript, body.state-noasync
 
 .logger span { white-space: pre-wrap; }
 .logger > :first-child { margin-bottom: auto; }
+
+#ocr-box
+{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    
+    padding: 1vw 1vh;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    width: 93vw;
+    height: 93vh;
+}
+
+#ocr-canvases-container
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+#ocr-canvases-container > div
+{
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#ocr-canvases-container > div > canvas
+{
+    max-height: 100%;
+    max-width: 100%;
+}
+
+#ocr-canvas-generated.redrawing { visibility: hidden; }
+#ocr-canvas-generated.hidden { visibility: hidden; }
+
+#ocr-canvases-container * { pointer-events: none; }
+#ocr-canvas-original { pointer-events: all; }
+
+#ocr-edit-box
+{
+    flex-basis: 16vw;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-left: 1vw;
+    
+    padding: .5vw;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column;
+}
+
+#ocr-edit-box.content #ocr-edit-box-background
+{
+    display: none;
+}
+
+#ocr-edit-box:not(.content) > :not(#ocr-edit-box-background)
+{
+    display: none;
+}
+
+#ocr-edit-info-row
+{
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+#ocr-edit-show
+{
+    width: 3vw;
+    height: 4.5vw;
+    margin-right: .5vw;
+}
+
+#ocr-edit-grid
+{
+    margin: .5vh 0;
+    padding: .25vh 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow-y: auto;
+    border-radius: 1vmin;
+    background: #bbb;
+    border: 1px solid #777;
+    
+    display: grid;
+    grid-template-columns: 3.75vw 3.75vw 3.75vw 3.75vw;
+    justify-content: space-evenly;
+    align-content: flex-start;
+}
+
+#ocr-edit-grid > div
+{
+    width: 3.5vw;
+    height: 5.25vw;
+    position: relative;
+    margin: .125vw;
+}
+
+#ocr-edit-grid > div > img
+{
+    width: 100%;
+    height: 100%;
+}
+
+#ocr-edit-grid > div > span
+{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: .25vmin;
+    background: rgba(0,0,0,0.8);
+    
+    font-size: 1em;
+    font-weight: bold;
+    font-family: Monospace;
+    color: #fff;
+    
+    pointer-events: none;
+    
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#ocr-edit-buttons
+{
+    display: flex;
+    flex-direction: row;
+    align-items: middle;
+}
+
+#ocr-edit-left, #ocr-edit-right
+{
+    padding: .25vmin;
+    border: 1px solid #000;
+    border-radius: .5vmin;
+    background: #ddd;
+}
+#ocr-edit-left:hover:not(:disabled), #ocr-edit-right:hover:not(:disabled)
+{
+    background: #eef;
+}
+#ocr-edit-left:active:not(:disabled), #ocr-edit-right:active:not(:disabled)
+{
+    background: #bbb;
+    border-style: inset;
+}
+#ocr-edit-left:disabled, #ocr-edit-right:disabled
+{
+    background: #ddd;
+    color: #999;
+    border-color: #aaa;
+}
+
+#ocr-edit-status
+{
+    flex-grow: 1;
+    text-align: center;
+}
+
+#ocr-right-box
+{
+    flex-basis: 12vw;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-left: 1vw;
+    
+    padding: 1vmin;
+    background: #ccc;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+    
+    display: flex;
+    flex-direction: column;
+}
+
+#ocr-controls
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    
+    flex-basis: 0;
+    flex-grow: .5;
+}
+
+#ocr-controls > div
+{
+    padding: .5vmin;
+    background: #aaa;
+    border: .5vmin solid #777;
+    border-radius: 1vmin;
+}
+#ocr-controls > div + div { margin-top: 1vmin; }
+#ocr-controls > div > header
+{
+    align-self: flex-start;
+    margin-left: 2%;
+    margin-bottom: 1%;
+    font-weight: bold;
+}
+
+#ocr-main-buttons
+{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+#ocr-main-buttons > input
+{
+    flex-basis: 0;
+    flex-grow: 1;
+    font-weight: bold;
+}
+#ocr-close { background: #a00; }
+#ocr-next { background: #0a0; }
+#ocr-next:disabled { background: #8a8; }
 
 #namecorrect-box
 {
