@@ -5,7 +5,7 @@ body:not(.state-choose)      #choose-box,
 body:not(.state-assign)      #assign-box,
 body:not(.state-namecorrect) #namecorrect-box,
 body:not(.state-neuronparse) #neuronparse-box,
-body:not(.state-neuronlist)  #neuronlist-box
+body:not(.state-decklist)    #decklist-box
 { display: none; }
 
 html, body { margin: 0; height: 100%; width: 100%; }
@@ -572,8 +572,8 @@ body.state-noscript, body.state-noasync
     font-weight: bold;
 }
 #nc-back { background: #a00; }
-#nc-decklist { background: #0a0; }
-#nc-decklist:disabled { background: #393; }
+#nc-next { background: #0a0; }
+#nc-next:disabled { background: #393; }
 
 #neuronparse-box
 {
@@ -813,7 +813,7 @@ body.state-noscript, body.state-noasync
 #neuronparse-next { background: #0a0; }
 #neuronparse-next:disabled { background: #8a8; }
 
-#neuronlist-box
+#decklist-box
 {
     display: flex;
     flex-direction: row;
@@ -828,7 +828,7 @@ body.state-noscript, body.state-noasync
     height: 93vh;
 }
 
-#neuronlist-left-box
+#decklist-left-box
 {
     flex-grow: 1;
     
@@ -837,7 +837,7 @@ body.state-noscript, body.state-noasync
     justify-content: center;
 }
 
-.neuronlist-deck-box
+.decklist-deck-box
 {
     position: relative;
     min-width: 16vw;
@@ -845,9 +845,9 @@ body.state-noscript, body.state-noasync
     overflow-y: auto;
 }
 
-.neuronlist-deck-box + .neuronlist-deck-box { margin-left: 1vw; }
+.decklist-deck-box + .decklist-deck-box { margin-left: 1vw; }
 
-.neuronlist-header
+.decklist-header
 {
     position: absolute;
     left: 1vw;
@@ -867,7 +867,7 @@ body.state-noscript, body.state-noasync
     background: #ccc;
 }
 
-.neuronlist-container
+.decklist-container
 {
     background: #ccc;
     
@@ -882,29 +882,29 @@ body.state-noscript, body.state-noasync
     flex-wrap: wrap;
 }
 
-.neuronlist-card
+.decklist-card
 {
     padding: 0 .2vw;
     border-radius: .5vmin;
 }
 
-.neuronlist-card.error
+.decklist-card.error
 {
     background: rgba(255,0,0,.4);
 }
 
-.neuronlist-card-name
+.decklist-card-name
 {
     margin-left: .3em;
 }
 
-.neuronlist-card-name.loading
+.decklist-card-name.loading
 {
     color: #888;
     font-style: italic;
 }
 
-#neuronlist-controls
+#decklist-controls
 {
     flex-basis: 12vw;
     flex-grow: 0;
@@ -921,15 +921,15 @@ body.state-noscript, body.state-noasync
     flex-direction: column;
 }
 
-#neuronlist-controls > div
+#decklist-controls > div
 {
     padding: .5vmin;
     background: #aaa;
     border: .5vmin solid #777;
     border-radius: 1vmin;
 }
-#neuronlist-controls > div + div { margin-top: 1vmin; }
-#neuronlist-controls > div > header
+#decklist-controls > div + div { margin-top: 1vmin; }
+#decklist-controls > div > header
 {
     align-self: flex-start;
     margin-left: 2%;
@@ -937,14 +937,14 @@ body.state-noscript, body.state-noasync
     font-weight: bold;
 }
 
-#neuronlist-main-controls
+#decklist-main-controls
 {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: stretch;
 }
-#neuronlist-main-controls > input
+#decklist-main-controls > input
 {
     min-width: 0;
     flex-basis: 0;
@@ -952,6 +952,6 @@ body.state-noscript, body.state-noasync
     flex-shrink: 0;
     font-weight: bold;
 }
-#neuronlist-back { background: #a00; }
-#neuronlist-decklist { background: #0a0; }
-#neuronlist-decklist:disabled { background: #393; }
+#decklist-back { background: #a00; }
+#decklist-decklist { background: #0a0; }
+#decklist-decklist:disabled { background: #393; }
