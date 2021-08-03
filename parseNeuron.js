@@ -1,4 +1,3 @@
-// NEURONPARSE LOGIC START
 (()=>{
     
 const IMAGE_DB = (async () =>
@@ -450,4 +449,3 @@ window.ParseNeuronExport = async function(file)
 };
 
 })();
-// NEURONPARSE LOGIC END

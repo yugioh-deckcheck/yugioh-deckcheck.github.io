@@ -1,4 +1,4 @@
-/* ASSIGNMENT PAGE LOGIC START */ (()=>{
+(()=>{
     
 const logger = document.getElementById('assign-log');
 
@@ -427,7 +427,7 @@ window.AssignPageSetup = function(width, height, textContent, annotations)
     }
 };
 
-})(); /* ASSIGMENT PAGE LOGIC END */
+})();
 
 window.ParsePDFFile = async function(file)
 {
