@@ -54,6 +54,7 @@ document.getElementById('neuronparse-close').addEventListener('click', () =>
 {
     if (document.body.className !== 'state-neuronparse')
         return;
+    DisableTicks();
     document.getElementById('pdf-input').value = '';
     document.body.className = 'state-choose';
 });

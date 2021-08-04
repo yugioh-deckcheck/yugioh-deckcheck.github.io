@@ -28,8 +28,70 @@ class RequestThrottle
 
 window.LOCALES = ['en','de','fr','it','es','pt'];
 
-/* for searching, requires manual input */        window.NormalizeNameLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').toLowerCase());
-/* for matching,  this can match automatically */ window.NormalizeNameStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').toLowerCase());
+/* for searching, requires manual input */        window.NormalizeNameLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').trim().toLowerCase());
+/* for matching,  this can match automatically */ window.NormalizeNameStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').trim().toLowerCase());
+
+window.CardIndex = null /*{
+    StrictNameToCard: {},
+    CardToNamesLax: {},
+    TypeToCards: {
+        monster: new Set(),
+        spell: new Set(),
+        trap: new Set(),
+        extra: new Set(),
+    }
+}*/;
+window.CardIndexLoaded = (async () =>
+{
+    const nameToCardIdx = {};
+    const cardToNameIdx = {};
+    const monsterIdx = new Set();
+    const spellIdx = new Set();
+    const trapIdx = new Set();
+    const extraIdx = new Set();
+    
+    // scope to help GC
+    {
+        const extraIdxData = await (await fetch('https://db.ygorganization.com/data/idx/card/properties/en')).json();
+        for (const id of extraIdxData.Fusion) extraIdx.add(id);
+        for (const id of extraIdxData.Synchro) extraIdx.add(id);
+        for (const id of extraIdxData.Xyz) extraIdx.add(id);
+        for (const id of extraIdxData.Link) extraIdx.add(id);
+    }
+    
+    // scope to help GC
+    {
+        const typeIdxData = await (await fetch('https://db.ygorganization.com/data/idx/card/cardType')).json();
+        for (const id of typeIdxData.monster)
+            if (!extraIdx.has(id))
+                monsterIdx.add(id);
+        for (const id of typeIdxData.spell)
+            spellIdx.add(id);
+        for (const id of typeIdxData.trap)
+            trapIdx.add(id);
+    }
+
+    for (const locale of window.LOCALES)
+    {
+        const nameIdx = Object.entries(await (await fetch('https://db.ygorganization.com/data/idx/card/name/'+locale)).json());
+        for (const [name, [id]] of nameIdx)
+        {
+            nameToCardIdx[window.NormalizeNameStrict(name)] = id;
+            (cardToNameIdx[id] || (cardToNameIdx[id] = [])).push([locale,window.NormalizeNameLax(name)]);
+        }
+    }
+    
+    window.CardIndex = Object.freeze({
+        StrictNameToCard: Object.freeze(nameToCardIdx),
+        CardToNamesLax:   Object.freeze(cardToNameIdx),
+        TypeToCards: Object.freeze({
+            monster: monsterIdx,
+            spell: spellIdx,
+            trap: trapIdx,
+            extra: extraIdx
+        }),
+    });
+})();
 
 const nameIdxO = {};
 const nameList = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,Object.entries(j).map(([name,[id]]) => { nameIdxO[window.NormalizeNameStrict(name)] = [locale,id]; return [id,window.NormalizeNameLax(name)]; })])));
@@ -38,29 +100,9 @@ window.GetCardNames = (() => nameList);
 const nameIdxP = nameList.then(() => nameIdxO);
 window.GetCardNameIndex = (() => nameIdxP);
 
-
-const extraDeckIdx = (async () =>
-{
-    const idx = await (await fetch('https://db.ygorganization.com/data/idx/card/properties/en')).json();
-    const cards = new Set();
-    for (const id of idx.Fusion) cards.add(id);
-    for (const id of idx.Synchro) cards.add(id);
-    for (const id of idx.Xyz) cards.add(id);
-    for (const id of idx.Link) cards.add(id);
-    return cards;
-})();
-window.GetExtraDeckCards = (() => extraDeckIdx);
-
-const carddataCache = {};
-window.GetCardData = ((id) =>
-{
-    let p = carddataCache[id];
-    if (p)
-        return p;
-    p = fetch('https://db.ygorganization.com/data/card/'+id).then((r) => r.json());
-    carddataCache[id] = p;
-    return p;
-});
+const _carddataCache = {};
+const _GetCardData = ((id) => fetch('https://db.ygorganization.com/data/card/'+id).then((r) => r.json()));
+window.GetCardData = ((id) => (_carddataCache[id] || (_carddataCache[id] = _GetCardData(id))));
 
 const artworkBaton0 = new RequestThrottle(1);
 const artworkBaton1 = new RequestThrottle(1);

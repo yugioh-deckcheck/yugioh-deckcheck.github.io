@@ -30,20 +30,6 @@ const __ocrLoaded = (async () =>
     OCR = ((data, props) => scheduler.addJob('recognize', data, props));
 })();
 
-const backButton = document.getElementById('ocr-back');
-const nextButton = document.getElementById('ocr-next');
-
-backButton.addEventListener('click', () =>
-{
-    if (document.body.className !== 'state-ocr')
-        return;
-
-    const backTo = backButton.backToState;
-    if (backTo === 'state-choose')
-        document.getElementById('pdf-input').value = '';
-    document.body.className = backTo;
-});
-
 const logger = document.getElementById('ocr-log');
 const origCanvas = document.getElementById('ocr-canvas-original');
 const genCanvas = document.getElementById('ocr-canvas-generated');
@@ -57,6 +43,58 @@ let SetCanvasDimensions = ((w,h) =>
     genCanvas.height = h;
     overlayCanvas.width = w;
     overlayCanvas.height = h;
+});
+
+const backButton = document.getElementById('ocr-back');
+const nextButton = document.getElementById('ocr-next');
+
+let __tickItv = 0;
+
+const DisableTicks = (() =>
+{
+    window.clearInterval(__tickItv);
+    __tickItv = 0;
+    genCanvas.classList.remove('hidden');
+});
+
+const EnableTicks = (() =>
+{
+    if (__tickItv) return;
+    
+    nextButton.timer = 3;
+    nextButton.disabled = true;
+    nextButton.disabledForTimer = true;
+    if (!nextButton.disabledForCard)
+        nextButton.value = 'Wait 3…';
+
+    __tickItv = window.setInterval(() =>
+    {
+        genCanvas.classList.toggle('hidden');
+        
+        if (!nextButton.timer) return;
+        if (!--nextButton.timer)
+        {
+            nextButton.disabledForTimer = false;
+            
+            nextButton.disabled = nextButton.disabledForCard;
+            if (!nextButton.disabledForCard)
+                nextButton.value = 'Confirm';
+        }
+        else if (!nextButton.disabledForCard)
+            nextButton.value = ('Wait '+nextButton.timer+'…');
+    }, 1000);
+});
+
+backButton.addEventListener('click', () =>
+{
+    if (document.body.className !== 'state-ocr')
+        return;
+
+    DisableTicks();
+    const backTo = backButton.backToState;
+    if (backTo === 'state-choose')
+        document.getElementById('pdf-input').value = '';
+    document.body.className = backTo;
 });
 
 
@@ -270,8 +308,8 @@ let SetupOCRFromCanvasData = (async () =>
     if (bottomHLine1.height < 17)
         throw ('Last hline found at y='+bottomHLine1.top+' not expected height, expected >=17, got '+bottomHLine1.height);
     for (const {top,height} of hlinesTop)
-        if (height > 12)
-            throw ('Middle hline found at y='+top+' not expected height, expected <= 12, got '+height);
+        if (height > 14)
+            throw ('Middle hline found at y='+top+' not expected height, expected <= 14, got '+height);
     
     SetLoadingMessage('Tracing image structure...\nFinding vertical lines...');
     await sleep(0);
@@ -305,8 +343,8 @@ let SetupOCRFromCanvasData = (async () =>
         if (vlines[i].width < 17)
             throw ('Odd vline at i='+i+' is too narrow, expected width >= 17, got '+vlines[i].width+' instead');
     for (let i=1; i<7; i+=2)
-        if (vlines[i].width > 12)
-            throw ('Even vline at i='+i+' is too wide, expected width <= 12, got '+vlines[i].width+' instead');
+        if (vlines[i].width > 14)
+            throw ('Even vline at i='+i+' is too wide, expected width <= 14, got '+vlines[i].width+' instead');
     
     SetLoadingMessage('Tracing image structure...\nFinding more horizontal lines...');
     await sleep(0);
@@ -339,11 +377,11 @@ let SetupOCRFromCanvasData = (async () =>
     // assert hline pattern - top is bolded (as it should be), but for some reason the bottom isn't along the entire line (gg konami)
     if (topHLine2.height < 17)
         throw ('First hline found at y='+topHLine2.top+' not expected height, expected >=17, got '+topHLine2.height);
-    if ((bottomHLine2.height < 17) && (bottomHLine2.height > 12))
-        throw ('Last hline found at y='+bottomHLine2.top+' not expected height, expected >=17 or <=12, got '+bottomHLine2.height);
+    if ((bottomHLine2.height < 17) && (bottomHLine2.height > 14))
+        throw ('Last hline found at y='+bottomHLine2.top+' not expected height, expected >=17 or <=14, got '+bottomHLine2.height);
     for (const {top,height} of hlinesBottom)
-        if (height > 12)
-            throw ('Middle hline found at y='+top+' not expected height, expected <= 12, got '+height);
+        if (height > 14)
+            throw ('Middle hline found at y='+top+' not expected height, expected <= 14, got '+height);
     
     SetLoadingMessage('Image structure OK.\nWaiting for OCR startup...');
     await __ocrLoaded;
@@ -387,7 +425,6 @@ let SetupOCRFromCanvasData = (async () =>
     }
     
     const blocks = await Promise.all(blockPromises);
-    console.log(blocks);
     Log(logger, ' ');
     Log(logger, 'NOTE: This is an in-progress tech demo of OCR parsing. Visual feedback and data correction NYI. \'Confirm\' does nothing right now.');
     Log(logger, ' ');
@@ -403,6 +440,33 @@ let SetupOCRFromCanvasData = (async () =>
             Log(logger, card.count+'x '+card.name);
         }
     }
+    
+    console.log(blocks);
+    const genCtx = genCanvas.getContext('2d');
+    genCtx.fillStyle = 'rgba(127,127,127,.9)';
+    genCtx.fillRect(0, 0, width, height);
+    
+    genCtx.textAlign = 'left';
+    genCtx.textBaseline = 'middle';
+    for (const block of blocks)
+    {
+        for (const card of block.cards)
+        {
+            const left = Math.min(card.countRect.left, card.nameRect.left);
+            const top = Math.min(card.countRect.top, card.nameRect.top);
+            const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
+            const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
+            genCtx.fillStyle = '#fff';
+            genCtx.font = (height*.8)+'px Helvetica, sans-serif';
+            genCtx.fillRect(left, top, width, height);
+            if (isNaN(card.count) && !card.name) continue;
+
+            genCtx.fillStyle = '#000';
+            genCtx.fillText(card.count+'x '+card.name, left + width*.02, top + height*.5, width*.96);
+        }
+    }
+    
+    EnableTicks();
     document.body.className = 'state-ocr';
 });
 

@@ -416,8 +416,9 @@ body.state-noscript, body.state-noasync
     max-width: 100%;
 }
 
+#ocr-canvas-generated { transition: opacity .8s; }
 #ocr-canvas-generated.redrawing { visibility: hidden; }
-#ocr-canvas-generated.hidden { visibility: hidden; }
+#ocr-canvas-generated.hidden { opacity: 0 }
 
 #ocr-canvases-container * { pointer-events: none; }
 #ocr-canvas-original { pointer-events: all; }
@@ -858,8 +859,9 @@ body.state-noscript, body.state-noasync
     max-width: 100%;
 }
 
+#neuron-canvas-generated { transition: opacity .8s; }
 #neuron-canvas-generated.redrawing { visibility: hidden; }
-#neuron-canvas-generated.hidden { visibility: hidden; }
+#neuron-canvas-generated.hidden { opacity: 0; }
 
 #neuron-canvases-container * { pointer-events: none; }
 #neuron-canvas-original { pointer-events: all; }

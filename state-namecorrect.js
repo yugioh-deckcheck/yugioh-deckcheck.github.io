@@ -71,11 +71,10 @@ const distanceScore = ((a,b,cutoff) =>
     return data[lenA][lenB];
 });  
 
-const setBoxMatch = ((box, locale, id) =>
+const setBoxMatch = ((box, id) =>
 {
     box.className = 'nc-card-box matched';
     box.searchResultsBox.className = 'nc-search-results';
-    box.matchedCardLocale = locale;
     box.matchedCardId = id;
 
     ScheduleBanlistCheck();
@@ -106,43 +105,36 @@ const tryValidate = (async function(box)
         window.clearInterval(box.interval);
     box.classList.remove('with-edit-box');
     box.loadingText.innerText = 'Searching... (0%)';
-    const name = box.adjustedText.value;
-    const nameIdx = await window.GetCardNameIndex();
-    const nameIdxs = await window.GetCardNames();
-    const extraDeckCards = await window.GetExtraDeckCards();
+    
+    await window.CardIndexLoaded;
+    
     if (token !== box.token)
         return;
-        
-    const isValidFor = ((box, id) =>
-    {
-        switch (box.which)
-        {
-            case 'main':
-                return !extraDeckCards.has(id);
-            case 'extra':
-                return extraDeckCards.has(id);
-            default:
-                return true;
-        }
-    });
+    
+    const name = box.adjustedText.value;
 
-    const exactMatch = nameIdx[window.NormalizeNameStrict(name)];
-    if (exactMatch && isValidFor(box, exactMatch[1]))
+    const idxs = ((box.which === 'main') ? ['monster','spell','trap'] : (box.which === 'extra') ? ['extra'] : ['monster','spell','trap','extra']).map((k) => window.CardIndex.TypeToCards[k]);
+
+    const exactMatch = window.CardIndex.StrictNameToCard[window.NormalizeNameStrict(name)];
+    if (exactMatch && idxs.some((idx) => idx.has(exactMatch)))
     {
-        setBoxMatch(box, exactMatch[0], exactMatch[1]);
+        setBoxMatch(box, exactMatch);
         return;
     }
 
     let matches = [];
     const searchName = window.NormalizeNameLax(name);
+    const searchNames = window.CardIndex.CardToNamesLax;
 
-    const nIdxs = nameIdxs.length;
+    const nIdxs = idxs.length;
     for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     {
-        const [locale, nameIdx] = nameIdxs[iIdxs];
-        const nIdx=nameIdx.length;
-        for (let iIdx=0; iIdx<nIdx; ++iIdx)
+        const idx  = idxs[iIdxs];
+        const nIdx = idx.size;
+        let iIdx = 0;
+        for (const idxId of idx)
         {
+            ++iIdx;
             if (!(iIdx % 1000))
             {
                 const progress = (((iIdxs/nIdxs)+(iIdx/nIdx/nIdxs))*100).toFixed(1);
@@ -152,25 +144,26 @@ const tryValidate = (async function(box)
                     return;
             }
             
-            const [idxId,idxName] = nameIdx[iIdx];
-            
-            if (!isValidFor(box, idxId))
-                continue;
-
-            const score = distanceScore(searchName, idxName, 4);
-            if (score < 4)
-                matches.push([locale, idxId, score]);
+            for (const [idxLocale, idxName] of (searchNames[idxId] || []))
+            {
+                const score = distanceScore(searchName, idxName, 4);
+                if (score < 4)
+                {
+                    matches.push([idxLocale, idxId, score]);
+                    break;
+                }
+            }
         }
     }
     box.className = 'nc-card-box';
     box.loadingText.innerText = 'Processing...';
     box.classList.add('needadj');
     matches.sort((a,b) => (a[2]-b[2]));
-    let data = [];
+    let data = new Array(Math.min(matches.length,10));
     for (let i=0; i<Math.min(matches.length,10); ++i)
     {
         const [locale,id] = matches[i];
-        data.push(GetCardData(id).then((d) => [locale,id,d.cardData[locale].name]));
+        data[i] = (GetCardData(id).then((d) => [locale,id,d.cardData[locale].name]));
     }
     data = await Promise.all(data);
     if (token !== box.token)
@@ -184,7 +177,7 @@ const tryValidate = (async function(box)
         const result = document.createElement('div');
         result.className = 'nc-search-result';
         result.title = name;
-        result.addEventListener('click', () => { setBoxMatch(box, locale, id); });
+        result.addEventListener('click', () => { setBoxMatch(box, id); });
         
         const flag = document.createElement('img');
         flag.className = 'nc-search-result-flag';
