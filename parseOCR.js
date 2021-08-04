@@ -60,10 +60,11 @@ let SetCanvasDimensions = ((w,h) =>
 });
 
 
-const lumavg = (({data}) => {
+const lumavg = (({width, data}, left, top, w, h) => {
     let sum = 0, n = 0;
-    for (let i=0; i < data.length; i += 4)
+    for (let y = top, maxY = top+h; y < maxY; ++y) for (let x = left, maxX = left+w; x < maxX; ++x)
     {
+        const i = 4*(y*width + x);
         const l = (data[i+0]*.299 + data[i+1]*.587 + data[i+2]*.114);
         sum += l;
         ++n;
@@ -71,10 +72,11 @@ const lumavg = (({data}) => {
     return (sum / n);
 });
 
-const whiteblock = (({data}) => {
+const whiteblock = (({width, data}, left, top, w, h) => {
     let max = 0, cur = 0;
-    for (let i=0; i < data.length; i += 4)
+    for (let y = top, maxY = top+h; y < maxY; ++y) for (let x = left, maxX = left+w; x < maxX; ++x)
     {
+        const i = 4*(y*width + x);
         const l = (data[i+0]*.299 + data[i+1]*.587 + data[i+2]*.114);
         if (l > 252) /* "white" */
             ++cur;
@@ -86,27 +88,28 @@ const whiteblock = (({data}) => {
     return max;
 });
 
-const iswhite = ((d) => (lumavg(d) > 252));
+const iswhite = ((d,x,y,w,h) => (lumavg(d,x,y,w,h) > 252));
 
 let rectCountComplete = 0, rectCountTotal = 0;
-const GetTextFromRect = (async (ctx, {left: x, top: y, width: w, height: h}) =>
+const GetTextFromRect = (async (imageData, {left, top, width, height}) =>
 {
     ++rectCountTotal;
     await sleep(Math.random()*500); /* freeze preventor #1 */
-    ctx.fillRect(0,0,0,0); /* firefox bug workaround */
     
-    let data = ctx.getImageData(x+2,y+2,w-4,h-4);
-    for (let i=0; i < data.data.length; ++i)
+    const pixelData = imageData.data;
+    const totalWidth = imageData.width;
+    for (let y = top+2, maxY = top+height-2; y < maxY; ++y) for (let x = left+2, maxX = left+width-2; x < maxX; ++x) /* 2px margins */
     {
-        const l = (data.data[i+0]*.299 + data.data[i+1]*.587 + data.data[i+2]*.114);
+        const i = 4*(x + y*totalWidth);
+        const l = (pixelData[i+0]*.299 + pixelData[i+1]*.587 + pixelData[i+2]*.114);
         if (l < 15) /* deep black */
         {
             try
             {
                 const canvas = document.createElement('canvas');
-                canvas.width = data.width;
-                canvas.height = data.height;
-                canvas.getContext('2d').putImageData(data,0,0);
+                canvas.width = width-4;
+                canvas.height = height-4;
+                canvas.getContext('2d').drawImage(origCanvas, left+2, top+2, width-4, height-4, 0, 0, canvas.width, canvas.height);
                 
                 const result = await OCR(canvas);
                 return result.data.text;
@@ -119,13 +122,12 @@ const GetTextFromRect = (async (ctx, {left: x, top: y, width: w, height: h}) =>
     
     // no black pixels found, this is an empty cell, we don't need to bother OCR
     --rectCountTotal;
-    data = null;
     
     await sleep(Math.random()*500); /* freeze preventor #2 */
     return '';
 });
 
-const DoParseBlock = (async ({ctx, countLeft, countWidth, nameLeft, nameWidth, headerHLine, totalHLine, hlines}) =>
+const DoParseBlock = (async ({data, countLeft, countWidth, nameLeft, nameWidth, headerHLine, totalHLine, hlines}) =>
 {
     const lastHLine = hlines[hlines.length-1];
     
@@ -134,16 +136,16 @@ const DoParseBlock = (async ({ctx, countLeft, countWidth, nameLeft, nameWidth, h
     const headerTop = headerHLine.top+headerHLine.height;
     const headerHeight = hlines[0].top-headerTop;
     const headerRect = { left: headerLeft, width: headerWidth, top: headerTop, height: headerHeight };
-    const headerPromise = GetTextFromRect(ctx, headerRect);
+    const headerPromise = GetTextFromRect(data, headerRect);
     
     const totalTop = lastHLine.top + lastHLine.height;
     const totalHeight = totalHLine.top - totalTop;
     
     const totalCountRect = { left: countLeft, width: countWidth, top: totalTop, height: totalHeight };
-    const totalCountPromise = GetTextFromRect(ctx, totalCountRect);
+    const totalCountPromise = GetTextFromRect(data, totalCountRect);
     
     const totalLabelRect = { left: nameLeft+5, width: nameWidth-5, top: totalTop, height: totalHeight };
-    const totalTextPromise = GetTextFromRect(ctx, totalLabelRect);
+    const totalTextPromise = GetTextFromRect(data, totalLabelRect);
     
     const cardsData = await Promise.all(new Array(hlines.length-1).fill().map(async (_,i) =>
     {
@@ -153,10 +155,10 @@ const DoParseBlock = (async ({ctx, countLeft, countWidth, nameLeft, nameWidth, h
         const height = bottomLine.top - top;
         
         const countRect = { left: countLeft, width: countWidth, top, height };
-        const countTextPromise = GetTextFromRect(ctx, countRect);
+        const countTextPromise = GetTextFromRect(data, countRect);
         
         const nameRect = { left: nameLeft,  width: nameWidth,  top, height };
-        const nameTextPromise = GetTextFromRect(ctx, nameRect);
+        const nameTextPromise = GetTextFromRect(data, nameRect);
         
         const count = parseInt(await countTextPromise);
         const name = (await nameTextPromise).trim();
@@ -185,44 +187,49 @@ const DoParseBlock = (async ({ctx, countLeft, countWidth, nameLeft, nameWidth, h
 
 let SetupOCRFromCanvasData = (async () =>
 {
-    const origCtx = origCanvas.getContext('2d');
+    let origCtx = origCanvas.getContext('2d');
     const {width, height} = origCanvas;
+    
+    SetLoadingMessage('Tracing image structure...\nGetting image data...');
+    await sleep(0);
+    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
+    const fullImageData = origCtx.getImageData(0, 0, width, height);
+    origCtx = null;
     
     SetLoadingMessage('Tracing image structure...\nFinding margins...');
     await sleep(0);
-    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     let leftMargin = 0;
-    while ((leftMargin < width) && iswhite(origCtx.getImageData(leftMargin, 0, 1, height)))
+    while ((leftMargin < width) && iswhite(fullImageData, leftMargin, 0, 1, height))
         ++leftMargin;
     
     let rightMargin = width-1;
-    while ((rightMargin > leftMargin) && iswhite(origCtx.getImageData(rightMargin, 0, 1, height)))
+    while ((rightMargin > leftMargin) && iswhite(fullImageData, rightMargin, 0, 1, height))
         --rightMargin;
     
     let topMargin = 0;
-    while ((topMargin < height) && iswhite(origCtx.getImageData(0, topMargin, width, 1)))
+    while ((topMargin < height) && iswhite(fullImageData, 0, topMargin, width, 1))
         ++topMargin;
     
     let bottomMargin = height-1;
-    while ((bottomMargin > topMargin) && iswhite(origCtx.getImageData(0, bottomMargin, width, 1)))
+    while ((bottomMargin > topMargin) && iswhite(fullImageData, 0, bottomMargin, width, 1))
         --bottomMargin;
     
-    const marginWidth = (rightMargin+1)-leftMargin;
-    const marginHeight = (bottomMargin+1)-topMargin;
+    ++rightMargin;
+    ++bottomMargin;
+    const marginWidth = rightMargin-leftMargin;
+    const marginHeight = bottomMargin-topMargin;
     
     SetLoadingMessage('Tracing image structure...\nFinding horizontal lines...');
     await sleep(0);
-    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     // find top horizontal lines (span entire width)
     let hlinesTop = [];
     let currentHLine = null;
     for (let y = topMargin; y < bottomMargin; ++y)
     {
-        const data = origCtx.getImageData(leftMargin, y, marginWidth, 1);
-        const lum = lumavg(data);
-        const white = whiteblock(data);
+        const lum = lumavg(fullImageData, leftMargin, y, marginWidth, 1);
+        const white = whiteblock(fullImageData, leftMargin, y, marginWidth, 1);
         if ((lum < 10) && (white < 5))
         {
             if (currentHLine)
@@ -248,7 +255,6 @@ let SetupOCRFromCanvasData = (async () =>
     
     SetLoadingMessage('Tracing image structure...\nFinding vertical lines...');
     await sleep(0);
-    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     // find vertical lines
     let vlines = [];
@@ -257,9 +263,8 @@ let SetupOCRFromCanvasData = (async () =>
     const vlineHeight = (hlinesTop[hlinesTop.length-1].top - vlineStart);
     for (let x = leftMargin; x < rightMargin; ++x)
     {
-        const data = origCtx.getImageData(x, vlineStart, 1, vlineHeight);
-        const lum = lumavg(data);
-        const white = whiteblock(data);
+        const lum = lumavg(fullImageData, x, vlineStart, 1, vlineHeight);
+        const white = whiteblock(fullImageData, x, vlineStart, 1, vlineHeight);
         if ((lum < 10) && (white < 5))
         {
             if (currentVLine)
@@ -283,7 +288,6 @@ let SetupOCRFromCanvasData = (async () =>
     
     SetLoadingMessage('Tracing image structure...\nFinding more horizontal lines...');
     await sleep(0);
-    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     // using the vline pattern (first five vlines are identical), find the bottom roster hlines
     let hlinesBottom = [];
@@ -292,9 +296,8 @@ let SetupOCRFromCanvasData = (async () =>
     const hline2Width = vlines[4].left + vlines[4].width - hline2Start;
     for (let y = bottomHLine1.top + bottomHLine1.height; y < bottomMargin; ++y)
     {
-        const data = origCtx.getImageData(hline2Start, y, hline2Width, 1);
-        const lum = lumavg(data);
-        const white = whiteblock(data);
+        const lum = lumavg(fullImageData, hline2Start, y, hline2Width, 1);
+        const white = whiteblock(fullImageData, hline2Start, y, hline2Width, 1);
         if ((lum < 10) && (white < 5))
         {
             if (currentHLine2)
@@ -335,7 +338,7 @@ let SetupOCRFromCanvasData = (async () =>
         const nameWidth  = (vlines[vlineStart+2].left - nameLeft);
         
         blockPromises[vlineStart/2] = DoParseBlock({
-            ctx: origCtx,
+            data: fullImageData,
             
             countLeft, countWidth,
             nameLeft, nameWidth,
@@ -348,7 +351,7 @@ let SetupOCRFromCanvasData = (async () =>
         if (vlineStart == 4) continue;
         
         blockPromises[3+(vlineStart/2)] = DoParseBlock({
-            ctx: origCtx,
+            data: fullImageData,
             
             countLeft, countWidth,
             nameLeft, nameWidth,
