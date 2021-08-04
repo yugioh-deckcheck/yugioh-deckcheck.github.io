@@ -96,18 +96,24 @@ const GetTextFromRect = (async (imageData, {left, top, width, height}) =>
     ++rectCountTotal;
     await sleep(Math.random()*500); /* freeze preventor #1 */
     
+    /* 2px margins to cut off half-black edge pixels that confuse OCR */
+    left += 2;
+    top += 2;
+    width -= 4;
+    height -= 4;
+    
     const pixelData = imageData.data;
     const totalWidth = imageData.width;
-    for (let y = top+2, maxY = top+height-2; y < maxY; ++y) for (let x = left+2, maxX = left+width-2; x < maxX; ++x) /* 2px margins */
+    for (let y = top, maxY = top+height; y < maxY; ++y) for (let x = left, maxX = left+width; x < maxX; ++x)
     {
         const i = 4*(x + y*totalWidth);
         const l = (pixelData[i+0]*.299 + pixelData[i+1]*.587 + pixelData[i+2]*.114);
         if (l < 15) /* deep black */
         {
             const canvas = document.createElement('canvas');
-            canvas.width = width-4;
-            canvas.height = height-4;
-            canvas.getContext('2d').drawImage(origCanvas, left+2, top+2, width-4, height-4, 0, 0, canvas.width, canvas.height);
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(origCanvas, left, top, width, height, 0, 0, canvas.width, canvas.height);
             
             const result = await OCR(canvas);
             
@@ -185,6 +191,8 @@ const DoParseBlock = (async ({data, countLeft, countWidth, nameLeft, nameWidth, 
 
 let SetupOCRFromCanvasData = (async () =>
 {
+    ClearLogs(logger);
+    
     let origCtx = origCanvas.getContext('2d');
     const {width, height} = origCanvas;
     
