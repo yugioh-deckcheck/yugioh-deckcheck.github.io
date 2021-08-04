@@ -15,13 +15,15 @@ window.sleep = ((ms) => new Promise((r) => setTimeout(r, ms)));
 
 window.Log = ((box, msg, cls) =>
 {
+    console.log(box.id, msg);
     const ctr = document.createElement('span');
     ctr.innerText = (''+msg);
     if (cls) ctr.className = cls;
     box.insertBefore(ctr, box.firstElementChild);
 });
 
-window.ClearLogs = ((box) => { 
+window.ClearLogs = ((box) => {
+    console.log('Logs cleared:', box.id);
     while (box.lastElementChild)
         box.removeChild(box.lastElementChild);
 });

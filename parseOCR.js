@@ -191,10 +191,12 @@ const DoParseBlock = (async ({data, countLeft, countWidth, nameLeft, nameWidth, 
 
 let SetupOCRFromCanvasData = (async () =>
 {
-    ClearLogs(logger);
-    
     let origCtx = origCanvas.getContext('2d');
     const {width, height} = origCanvas;
+    
+    Log(logger, ' ');
+    Log(logger, 'Inspecting canvas...');
+    Log(logger, 'Dims: '+width+'px by '+height+'px');
     
     SetLoadingMessage('Tracing image structure...\nGetting image data...');
     await sleep(0);
@@ -204,6 +206,9 @@ let SetupOCRFromCanvasData = (async () =>
     
     SetLoadingMessage('Tracing image structure...\nFinding margins...');
     await sleep(0);
+    
+    Log(logger, ' ');
+    Log(logger, 'Finding margins...');
     
     let leftMargin = 0;
     while ((leftMargin < width) && iswhite(fullImageData, leftMargin, 0, 1, height))
@@ -226,8 +231,15 @@ let SetupOCRFromCanvasData = (async () =>
     const marginWidth = rightMargin-leftMargin;
     const marginHeight = bottomMargin-topMargin;
     
+    Log(logger, 'Left margin: '+leftMargin+'px');
+    Log(logger, 'Top margin:  '+topMargin+'px');
+    Log(logger, 'Content: '+marginWidth+'px by '+marginHeight+'px');
+    
     SetLoadingMessage('Tracing image structure...\nFinding horizontal lines...');
     await sleep(0);
+    
+    Log(logger, ' ');
+    Log(logger, 'Finding horiz lines...');
     
     // find top horizontal lines (span entire width)
     let hlinesTop = [];
@@ -246,6 +258,8 @@ let SetupOCRFromCanvasData = (async () =>
         else
             currentHLine = null;
     }
+    
+    Log(logger, 'Found '+hlinesTop.length+' full hlines');
     
     const topHLine1 = hlinesTop.shift();
     const bottomHLine1 = hlinesTop.pop();
@@ -282,6 +296,8 @@ let SetupOCRFromCanvasData = (async () =>
             currentVLine = null;
     }
     
+    Log(logger, 'Found '+vlines.length+' verti lines');
+    
     // assert vline pattern - there should be seven in total: bold, narrow, bold, narrow, bold, narrow, bold
     if (vlines.length !== 7)
         throw ('Unexpected number of vlines; expected 7, got '+vlines.length);
@@ -314,6 +330,8 @@ let SetupOCRFromCanvasData = (async () =>
         else
             currentHLine2 = null;
     }
+    
+    Log(logger, 'Found '+hlinesBottom.length+' bottom hlines');
 
     const topHLine2 = hlinesBottom.shift();
     const bottomHLine2 = hlinesBottom.pop();
@@ -370,7 +388,9 @@ let SetupOCRFromCanvasData = (async () =>
     
     const blocks = await Promise.all(blockPromises);
     console.log(blocks);
-    Log(logger, 'This is an in-progress tech demo of OCR parsing. Visual feedback and data correction NYI. \'Confirm\' does nothing right now.');
+    Log(logger, ' ');
+    Log(logger, 'NOTE: This is an in-progress tech demo of OCR parsing. Visual feedback and data correction NYI. \'Confirm\' does nothing right now.');
+    Log(logger, ' ');
     Log(logger, 'Anyway, here is what we think we saw in the data. Your browser console has the whole thing.');
     for (const block of blocks)
     {
@@ -407,10 +427,16 @@ window.SetupOCRFromPDFPage = async function(backTo, page)
 {
     try
     {
+        ClearLogs(logger);
         backButton.backToState = backTo;
         
+        Log(logger, 'Setting up PDF render...');
+        
         const baseViewport = page.getViewport({ scale: 1 });
-        const viewport = page.getViewport({ scale: (8192/baseViewport.height) });
+        const scale = (8192/baseViewport.height);
+        const viewport = page.getViewport({ scale });
+        Log(logger, 'Native: '+baseViewport.width+'px by '+baseViewport.height+'px');
+        Log(logger, 'Scaling factor: '+scale.toFixed(2)+'x');
         
         SetLoadingMessage('Rendering PDF...');
         
@@ -418,6 +444,8 @@ window.SetupOCRFromPDFPage = async function(backTo, page)
         
         const pdfCtx = origCanvas.getContext('2d');
         await page.render({ canvasContext: pdfCtx, viewport: viewport }).promise;
+        
+        Log(logger, 'Finished rendering.');
         
         return await SetupOCRFromCanvasData(pdfCtx);
     } catch (e) {
