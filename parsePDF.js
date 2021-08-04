@@ -275,7 +275,6 @@ const parsers = {
             parseFromLabel(extraLabel, cutoff, spellLabel)
         ];
         
-        console.log(monster, spell, trap);
         if (!monster.cards.length && !spell.cards.length && !trap.cards.length)
             throw 'Failed to find any maindeck card data';
 

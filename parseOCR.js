@@ -14,7 +14,7 @@ const __ocrLoaded = (async () =>
     console.log('OCR starting up...');
     await EnsureScriptLoaded('include/tesseract/tesseract.min.js');
     const scheduler = window.Tesseract.createScheduler();
-    await Promise.all(new Array(10).fill().map(async () =>
+    await Promise.all(new Array(4).fill().map(async () =>
     {
         const worker = window.Tesseract.createWorker({
             workerPath: 'include/tesseract/worker.min.js',
@@ -44,6 +44,7 @@ backButton.addEventListener('click', () =>
     document.body.className = backTo;
 });
 
+const logger = document.getElementById('ocr-log');
 const origCanvas = document.getElementById('ocr-canvas-original');
 const genCanvas = document.getElementById('ocr-canvas-generated');
 const overlayCanvas = document.getElementById('ocr-canvas-overlay');
@@ -87,23 +88,40 @@ const whiteblock = (({data}) => {
 
 const iswhite = ((d) => (lumavg(d) > 252));
 
+let rectCountComplete = 0, rectCountTotal = 0;
 const GetTextFromRect = (async (ctx, {left: x, top: y, width: w, height: h}) =>
 {
-    const data = ctx.getImageData(x+2,y+2,w-4,h-4);
+    ++rectCountTotal;
+    await sleep(Math.random()*500); /* freeze preventor #1 */
+    ctx.fillRect(0,0,0,0); /* firefox bug workaround */
+    
+    let data = ctx.getImageData(x+2,y+2,w-4,h-4);
     for (let i=0; i < data.data.length; ++i)
     {
         const l = (data.data[i+0]*.299 + data.data[i+1]*.587 + data.data[i+2]*.114);
         if (l < 15) /* deep black */
         {
-            const canvas = document.createElement('canvas');
-            canvas.width = data.width;
-            canvas.height = data.height;
-            canvas.getContext('2d').putImageData(data,0,0);
-            
-            const result = await OCR(canvas);
-            return result.data.text;
+            try
+            {
+                const canvas = document.createElement('canvas');
+                canvas.width = data.width;
+                canvas.height = data.height;
+                canvas.getContext('2d').putImageData(data,0,0);
+                
+                const result = await OCR(canvas);
+                return result.data.text;
+            } finally {
+                ++rectCountComplete;
+                SetLoadingMessage('OCR processing...\n'+(rectCountComplete*100/rectCountTotal).toFixed(0)+'% complete');
+            }
         }
     }
+    
+    // no black pixels found, this is an empty cell, we don't need to bother OCR
+    --rectCountTotal;
+    data = null;
+    
+    await sleep(Math.random()*500); /* freeze preventor #2 */
     return '';
 });
 
@@ -113,13 +131,13 @@ const DoParseBlock = (async ({ctx, countLeft, countWidth, nameLeft, nameWidth, h
     
     const headerLeft = countLeft;
     const headerWidth = (nameLeft+nameWidth)-headerLeft;
-    const headerTop = headerHLine.start+headerHLine.height;
-    const headerHeight = hlines[0].start-headerTop;
+    const headerTop = headerHLine.top+headerHLine.height;
+    const headerHeight = hlines[0].top-headerTop;
     const headerRect = { left: headerLeft, width: headerWidth, top: headerTop, height: headerHeight };
     const headerPromise = GetTextFromRect(ctx, headerRect);
     
-    const totalTop = lastHLine.start + lastHLine.height;
-    const totalHeight = totalHLine.start - totalTop;
+    const totalTop = lastHLine.top + lastHLine.height;
+    const totalHeight = totalHLine.top - totalTop;
     
     const totalCountRect = { left: countLeft, width: countWidth, top: totalTop, height: totalHeight };
     const totalCountPromise = GetTextFromRect(ctx, totalCountRect);
@@ -130,9 +148,9 @@ const DoParseBlock = (async ({ctx, countLeft, countWidth, nameLeft, nameWidth, h
     const cardsData = await Promise.all(new Array(hlines.length-1).fill().map(async (_,i) =>
     {
         const topLine = hlines[i+0];
-        const top = topLine.start + topLine.height;
+        const top = topLine.top + topLine.height;
         const bottomLine = hlines[i+1];
-        const height = bottomLine.start - top;
+        const height = bottomLine.top - top;
         
         const countRect = { left: countLeft, width: countWidth, top, height };
         const countTextPromise = GetTextFromRect(ctx, countRect);
@@ -170,9 +188,9 @@ let SetupOCRFromCanvasData = (async () =>
     const origCtx = origCanvas.getContext('2d');
     const {width, height} = origCanvas;
     
-    SetLoadingMessage('Tracing image structure...');
+    SetLoadingMessage('Tracing image structure...\nFinding margins...');
     await sleep(0);
-    console.log(width,height);
+    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     let leftMargin = 0;
     while ((leftMargin < width) && iswhite(origCtx.getImageData(leftMargin, 0, 1, height)))
@@ -192,6 +210,10 @@ let SetupOCRFromCanvasData = (async () =>
     
     const marginWidth = (rightMargin+1)-leftMargin;
     const marginHeight = (bottomMargin+1)-topMargin;
+    
+    SetLoadingMessage('Tracing image structure...\nFinding horizontal lines...');
+    await sleep(0);
+    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     // find top horizontal lines (span entire width)
     let hlinesTop = [];
@@ -224,11 +246,15 @@ let SetupOCRFromCanvasData = (async () =>
         if (height > 12)
             throw ('Middle hline found at y='+top+' not expected height, expected <= 12, got '+height);
     
+    SetLoadingMessage('Tracing image structure...\nFinding vertical lines...');
+    await sleep(0);
+    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
+    
     // find vertical lines
     let vlines = [];
     let currentVLine = null;
-    const vlineStart = (hlines[0].top + hlines[0].height);
-    const vlineHeight = (hlines[hlines.length-1].top - vlineStart);
+    const vlineStart = (hlinesTop[0].top + hlinesTop[0].height);
+    const vlineHeight = (hlinesTop[hlinesTop.length-1].top - vlineStart);
     for (let x = leftMargin; x < rightMargin; ++x)
     {
         const data = origCtx.getImageData(x, vlineStart, 1, vlineHeight);
@@ -254,6 +280,10 @@ let SetupOCRFromCanvasData = (async () =>
     for (let i=1; i<7; i+=2)
         if (vlines[i].width > 12)
             throw ('Even vline at i='+i+' is too wide, expected width <= 12, got '+vlines[i].width+' instead');
+    
+    SetLoadingMessage('Tracing image structure...\nFinding more horizontal lines...');
+    await sleep(0);
+    origCtx.fillRect(0,0,0,0); /* firefox bug workaround */
     
     // using the vline pattern (first five vlines are identical), find the bottom roster hlines
     let hlinesBottom = [];
@@ -294,7 +324,9 @@ let SetupOCRFromCanvasData = (async () =>
     SetLoadingMessage('Image structure OK.\nSetting up OCR...');
     await sleep(0);
     
-    let blocks = [null, null, null, null, null];
+    rectCountComplete = 0;
+    rectCountTotal = 0;
+    let blockPromises = [null, null, null, null, null];
     for (const vlineStart of [0,2,4])
     {
         const countLeft  = (vlines[vlineStart+0].left + vlines[vlineStart+0].width);
@@ -302,7 +334,7 @@ let SetupOCRFromCanvasData = (async () =>
         const nameLeft   = (vlines[vlineStart+1].left + vlines[vlineStart+1].width);
         const nameWidth  = (vlines[vlineStart+2].left - nameLeft);
         
-        blocks[vlineStart+0] = DoParseBlock({
+        blockPromises[vlineStart/2] = DoParseBlock({
             ctx: origCtx,
             
             countLeft, countWidth,
@@ -315,7 +347,7 @@ let SetupOCRFromCanvasData = (async () =>
         
         if (vlineStart == 4) continue;
         
-        blocks[vlineStart+1] = DoParseBlock({
+        blockPromises[3+(vlineStart/2)] = DoParseBlock({
             ctx: origCtx,
             
             countLeft, countWidth,
@@ -327,16 +359,29 @@ let SetupOCRFromCanvasData = (async () =>
         });
     }
     
-    SetLoadingMessage('Image structure OK.\nOCR processing...');
-    
-    const blockData = await Promise.all(blocks);
-    console.log(blockData);
+    const blocks = await Promise.all(blockPromises);
+    console.log(blocks);
+    Log(logger, 'This is an in-progress tech demo of OCR parsing. Visual feedback and data correction NYI. \'Confirm\' does nothing right now.');
+    Log(logger, 'Anyway, here is what we think we saw in the data. Your browser console has the whole thing.');
+    for (const block of blocks)
+    {
+        Log(logger, ' ');
+        Log(logger, '=== '+block.header.toUpperCase());
+        Log(logger, '== '+block.totalCount+' card(s) total');
+        for (const card of block.cards)
+        {
+            if (isNaN(card.count) && !card.name) continue;
+            Log(logger, card.count+'x '+card.name);
+        }
+    }
+    document.body.className = 'state-ocr';
 });
 
 window.SetupOCRFromImageSource = async function(backTo, source)
 {
     try
     {
+        backButton.backToState = backTo;
         // @todo
     } catch (e) {
         console.error(e);
@@ -353,6 +398,8 @@ window.SetupOCRFromPDFPage = async function(backTo, page)
 {
     try
     {
+        backButton.backToState = backTo;
+        
         const baseViewport = page.getViewport({ scale: 1 });
         const viewport = page.getViewport({ scale: (8192/baseViewport.height) });
         
