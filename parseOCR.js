@@ -104,19 +104,17 @@ const GetTextFromRect = (async (imageData, {left, top, width, height}) =>
         const l = (pixelData[i+0]*.299 + pixelData[i+1]*.587 + pixelData[i+2]*.114);
         if (l < 15) /* deep black */
         {
-            try
-            {
-                const canvas = document.createElement('canvas');
-                canvas.width = width-4;
-                canvas.height = height-4;
-                canvas.getContext('2d').drawImage(origCanvas, left+2, top+2, width-4, height-4, 0, 0, canvas.width, canvas.height);
-                
-                const result = await OCR(canvas);
-                return result.data.text;
-            } finally {
-                ++rectCountComplete;
-                SetLoadingMessage('OCR processing...\n'+(rectCountComplete*100/rectCountTotal).toFixed(0)+'% complete');
-            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width-4;
+            canvas.height = height-4;
+            canvas.getContext('2d').drawImage(origCanvas, left+2, top+2, width-4, height-4, 0, 0, canvas.width, canvas.height);
+            
+            const result = await OCR(canvas);
+            
+            ++rectCountComplete;
+            SetLoadingMessage('OCR processing...\n'+(rectCountComplete*100/rectCountTotal).toFixed(0)+'% complete');
+            
+            return result.data.text;
         }
     }
     
