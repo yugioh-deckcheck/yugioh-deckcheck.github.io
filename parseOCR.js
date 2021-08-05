@@ -86,10 +86,10 @@ const EnableTicks = (() =>
 });
 
 let SELECTED_CARD = null;
+let SELECTED_CARD_STRONG = false;
 let CURRENT_PARSE_DATA = null;
 
 let _resolvedNotifyTimeout = 0;
-
 const UpdateIsAllResolved = (() =>
 {
     _resolvedNotifyTimeout = 0;
@@ -116,12 +116,46 @@ const CardJustResolvedNotify = (() =>
 {
     if (_resolvedNotifyTimeout)
         return;
-    _resolvedNotifyTimeout = window.setTimeout(100, UpdateIsAllResolved);
+    _resolvedNotifyTimeout = window.setTimeout(UpdateIsAllResolved, 100);
+});
+
+let SetCardResolved = null;
+
+const AddSelectedCardSearchResult = ((pos, locale, id, vagueName) =>
+{
+    const card = SELECTED_CARD;
+    const container = document.getElementById('ocr-edit-results');
+    
+    const button = document.createElement('div');
+    button.className = 'ocr-search-result';
+    button.addEventListener('click', () => { SetCardResolved(card, { locale, cardId: id }, vagueName); });
+    
+    const flag = document.createElement('img');
+    flag.className = 'ocr-search-result-flag';
+    flag.src = ('img/locale_'+locale+'.png');
+    button.appendChild(flag);
+    
+    const label = document.createElement('span');
+    label.className = 'ocr-search-result-name vague';
+    label.innerText = vagueName;
+    button.appendChild(label);
+    
+    window.GetCardData(id).then(({cardData}) =>
+    {
+        label.innerText = cardData[locale].name;
+        label.classList.remove('vague');
+    });
+    
+    if (isNaN(pos) || (container.children.length <= pos))
+        container.appendChild(button);
+    else
+        container.insertBefore(button, container.children[pos]);
 });
 
 const selCanvas = document.getElementById('ocr-edit-show');
-let SetSelectedCard = ((card) =>
+const SetSelectedCard = ((card, strong) =>
 {
+    SELECTED_CARD_STRONG = strong;
     if (card === SELECTED_CARD) return;
     
     const ctx = overlayCanvas.getContext('2d');
@@ -170,27 +204,87 @@ let SetSelectedCard = ((card) =>
     selCtx.drawImage(origCanvas, left, top, width, height, 0, 0, width, height);
     
     document.getElementById('ocr-edit-count').value = card.count;
-    document.getElementById('ocr-edit-search').value = card.name;
+    document.getElementById('ocr-edit-search').value = /*card.name*/'this field NYI'; // @todo
+    
+    if (card.searchProgress)
+    {
+        document.getElementById('ocr-edit-results-box').classList.add('loading');
+        document.getElementById('ocr-edit-results-progress').innerText = card.searchProgress;
+    }
+    else
+        document.getElementById('ocr-edit-results-box').classList.remove('loading');
+    
+    for (const [idxLocale, idxId, idxName] of (card.searchResults || []))
+        AddSelectedCardSearchResult(null, idxLocale, idxId, idxName);
     
     document.getElementById('ocr-edit-box').classList.add('content');
 });
 
-let DoCardSearch = (async (card) =>
+SetCardResolved = ((card, data, weakName) =>
 {
+    card.resolvedTo = data;
+    CardJustResolvedNotify();
+    
     const left = Math.min(card.countRect.left, card.nameRect.left);
     const top = Math.min(card.countRect.top, card.nameRect.top);
     const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
     const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
     
     const drawCtx = genCanvas.getContext('2d');
+    if (!data.cardId)
+    {
+        drawCtx.fillStyle = '#ddf';
+        drawCtx.fillRect(left, top, width, height);
+        return;
+    }
+    
+    drawCtx.fillStyle = '#fff';
+    drawCtx.fillRect(left, top, width, height);
+    
+    drawCtx.font = (height*.8)+'px Helvetica, sans-serif';
+    drawCtx.textBaseline = 'middle';
+    drawCtx.textAlign = 'left';
+    drawCtx.fillStyle = '#555';
+    drawCtx.fillText(card.count+'x '+weakName, left + width*.02, top + height*.5, width*.96);
+    
+    window.GetCardData(data.cardId).then(({cardData}) =>
+    {
+        if (card.resolvedTo !== data)
+            return;
+        const realCardName = cardData[data.locale].name;
+        drawCtx.fillStyle = '#fff';
+        drawCtx.fillRect(left, top, width, height);
+        
+        drawCtx.font = (height*.8)+'px Helvetica, sans-serif';
+        drawCtx.textBaseline = 'middle';
+        drawCtx.textAlign = 'left';
+        drawCtx.fillStyle = '#000';
+        drawCtx.fillText(card.count+'x '+realCardName, left + width*.02, top + height*.5, width*.96);
+    });
+    
+    if ((card === SELECTED_CARD) && !SELECTED_CARD_STRONG)
+    {
+        for (const block of CURRENT_PARSE_DATA)
+        {
+            const card = block.cards.find((c) => !c.resolvedTo);
+            if (card)
+            {
+                SetSelectedCard(card);
+                return;
+            }
+        }
+        SetSelectedCard(null);
+    }
+});
+
+let DoCardSearch = (async (card) =>
+{
+    
+    const drawCtx = genCanvas.getContext('2d');
     
     if (!card.count && !card.name)
     {
-        card.resolvedTo = { locale: null, cardId: null };
-        drawCtx.fillStyle = '#ddf';
-        drawCtx.fillRect(left, top, width, height);
-        
-        CardJustResolvedNotify();
+        SetCardResolved(card, { locale: null, cardId: null });
         return;
     }
 
@@ -208,37 +302,17 @@ let DoCardSearch = (async (card) =>
     if (perfectMatch && idxs.some((idx) => idx.has(perfectMatch[1])))
     {
         const [ locale, cardId ] = perfectMatch;
-        card.resolvedTo = { locale, cardId };
-        
-        drawCtx.fillStyle = '#fff';
-        drawCtx.fillRect(left, top, width, height);
-        
-        drawCtx.font = (height*.8)+'px Helvetica, sans-serif';
-        drawCtx.textBaseline = 'middle';
-        drawCtx.textAlign = 'left';
-        drawCtx.fillStyle = '#000';
-        drawCtx.fillText(card.count+'x '+cardName, left + width*.02, top + height*.5, width*.96);
-        
-        const cardData = (await window.GetCardData(cardId));
-        if (cardId !== card.resolvedTo.cardId)
-            return;
-        
-        const realCardName = cardData.cardData[card.resolvedTo.locale].name;
-        drawCtx.fillStyle = '#fff';
-        drawCtx.fillRect(left, top, width, height);
-        
-        drawCtx.font = (height*.8)+'px Helvetica, sans-serif';
-        drawCtx.textBaseline = 'middle';
-        drawCtx.textAlign = 'left';
-        drawCtx.fillStyle = '#000';
-        drawCtx.fillText(card.count+'x '+realCardName, left + width*.02, top + height*.5, width*.96);
-        
-        CardJustResolvedNotify();
+        SetCardResolved(card, { locale, cardId }, cardName);
         return;
     }
         
     if (!SELECTED_CARD)
         SetSelectedCard(card);
+    
+    const left = Math.min(card.countRect.left, card.nameRect.left);
+    const top = Math.min(card.countRect.top, card.nameRect.top);
+    const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
+    const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
         
     drawCtx.fillStyle = '#fbb';
     drawCtx.fillRect(left, top, width, height);
@@ -251,7 +325,8 @@ let DoCardSearch = (async (card) =>
     
     if (SELECTED_CARD === card)
     {
-        /* @todo update zoom window too */
+        document.getElementById('ocr-edit-results-box').classList.add('loading');
+        document.getElementById('ocr-edit-results-progress').innerText = '0';
     }
     
     card.searchProgress = 0;
@@ -268,7 +343,7 @@ let DoCardSearch = (async (card) =>
         for (const idxId of idx)
         {
             ++iIdx;
-            if (!(iIdx % 1000))
+            if (!(iIdx % 200))
             {
                 const progress = (((iIdxs/nIdxs)+(iIdx/nIdx/nIdxs))*100).toFixed(1);
                 drawCtx.fillStyle = '#fbb';
@@ -281,9 +356,7 @@ let DoCardSearch = (async (card) =>
                 drawCtx.fillText('Searching... ('+progress+'%)', left + width*.5, top + height*.5, width*.96);
                 
                 if (SELECTED_CARD === card)
-                {
-                    /* @todo update zoom window too */
-                }
+                    document.getElementById('ocr-edit-results-progress').innerText = progress;
                 
                 card.searchProgress = progress;
                 
@@ -317,17 +390,19 @@ let DoCardSearch = (async (card) =>
                         break;
                 }
                 
-                searchResults.splice(i, 0, [idxLocale, idxId, score]);
+                searchResults.splice(i, 0, [idxLocale, idxId, idxName]);
                 if (SELECTED_CARD === card)
-                {
-                    /* @todo insert into zoom window too */
-                }
+                    AddSelectedCardSearchResult(i, idxLocale, idxId, idxName);
+
+
                 break;
             }
         }
     }
     
     card.searchProgress = null;
+    if (SELECTED_CARD === card)
+        document.getElementById('ocr-edit-results-box').classList.remove('loading');
     
     drawCtx.fillStyle = '#fbb';
     drawCtx.fillRect(left, top, width, height);
@@ -337,14 +412,6 @@ let DoCardSearch = (async (card) =>
     drawCtx.textAlign = 'center';
     drawCtx.fillStyle = '#555';
     drawCtx.fillText('Waiting for input...', left + width*.5, top + height*.5, width*.96);
-    
-    if (SELECTED_CARD === card)
-    {
-        /* @todo remove loading text from zoom window */
-    }
-    Log(logger, 'Search for \''+searchName+'\' done:');
-    for (const [idxLocale, idxId, score] of searchResults)
-        Log(logger, '- #'+idxId+' ('+idxLocale+'), score '+score);
 });
 
 backButton.addEventListener('click', () =>
@@ -357,6 +424,43 @@ backButton.addEventListener('click', () =>
     if (backTo === 'state-choose')
         document.getElementById('pdf-input').value = '';
     document.body.className = backTo;
+});
+
+nextButton.addEventListener('click', async () =>
+{
+    if (document.body.className !== 'state-ocr')
+        return;
+    
+    StartLoading();
+    
+    await EnsureScriptLoaded('state-decklist.js');
+    
+    const deckData = {
+        name: 'OCR parse result',
+        decks: {
+            main: [],
+            extra: [],
+            side: [],
+        }
+    }
+    
+    for (const [which, blockIds] of [['main',[0,1,2]],['extra',[4]],['side',[3]]])
+    {
+        for (const blockId of blockIds)
+        {
+            for (const card of CURRENT_PARSE_DATA[blockId].cards)
+            {
+                if (!card.resolvedTo)
+                {
+                    Log(logger, 'Failed to confirm. Unresolved card in block '+blockId+'?');
+                    return;
+                }
+                for (let i=0; i<card.count; ++i)
+                    deckData.decks[which].push(card.resolvedTo.cardId);
+            }
+        }
+    }
+    window.SetupDeckList('state-ocr', deckData);
 });
 
 
@@ -705,9 +809,9 @@ let SetupOCRFromCanvasData = (async () =>
     
     console.log(blocks);
     
-    for (const card of blocks[0].cards) card.indexes = ['monster'];
-    for (const card of blocks[1].cards) card.indexes = ['spell'];
-    for (const card of blocks[2].cards) card.indexes = ['trap'];
+    for (const card of blocks[0].cards) card.indexes = ['monster','spell','trap'];
+    for (const card of blocks[1].cards) card.indexes = ['spell','monster','trap'];
+    for (const card of blocks[2].cards) card.indexes = ['trap','monster','spell'];
     for (const card of blocks[3].cards) card.indexes = ['monster','spell','trap','extra'];
     for (const card of blocks[4].cards) card.indexes = ['extra'];
     
