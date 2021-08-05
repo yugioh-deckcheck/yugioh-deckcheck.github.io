@@ -385,6 +385,7 @@ const SetupAssignPage = async function(width, height, textContent, annotations)
     // render text boxes
     for (const item of textContent.items)
     {
+        if (!item.str.trim()) continue;
         const box = document.createElement('span');
         box.className = 'pdf-element';
         box.style.left = ((item.transform[4]*scalingFactor)+'vmin');
