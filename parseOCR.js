@@ -531,6 +531,9 @@ backButton.addEventListener('click', () =>
         return;
 
     DisableTicks();
+    SELECTED_CARD = null;
+    CURRENT_PARSE_DATA = null;
+    
     const backTo = backButton.backToState;
     if (backTo === 'state-choose')
         document.getElementById('pdf-input').value = '';
@@ -776,6 +779,9 @@ let SetupOCRFromCanvasData = (async () =>
     
     Log(logger, 'Found '+hlinesTop.length+' full hlines');
     
+    if (hlinesTop.length < 3)
+        throw ('Failed to find top hlines');
+    
     const topHLine1 = hlinesTop.shift();
     const bottomHLine1 = hlinesTop.pop();
     
@@ -847,6 +853,9 @@ let SetupOCRFromCanvasData = (async () =>
     }
     
     Log(logger, 'Found '+hlinesBottom.length+' bottom hlines');
+    
+    if (hlinesBottom.length < 3)
+        throw 'Failed to find bottom hlines';
 
     const topHLine2 = hlinesBottom.shift();
     const bottomHLine2 = hlinesBottom.pop();
@@ -920,12 +929,31 @@ let SetupOCRFromCanvasData = (async () =>
     document.body.className = 'state-ocr';
 });
 
-window.SetupOCRFromImageSource = async function(backTo, source)
+window.SetupOCRFromImageBitmap = async function(backTo, bitmap)
 {
     try
     {
+        ClearLogs(logger);
         backButton.backToState = backTo;
-        // @todo
+        
+        Log(logger, 'Scaling image...');
+        
+        const scale = (8192/bitmap.height);
+        Log(logger, 'Native: '+bitmap.width+'px by '+bitmap.height+'px');
+        Log(logger, 'Scaling factor: '+scale.toFixed(2)+'x');
+        
+        SetLoadingMessage('Scaling image...');
+        
+        const width = Math.round(bitmap.width*scale);
+        
+        SetCanvasDimensions(width, 8192);
+        
+        const ctx = origCanvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, width, 8192);
+        bitmap.close();
+        Log(logger, 'Done.');
+        
+        return await SetupOCRFromCanvasData(ctx);
     } catch (e) {
         console.error(e);
         StartLoading();

@@ -6,6 +6,7 @@ const IMAGE_DB = (async () =>
 })();
 
 let CURRENT_DATA = null;
+let CURRENT_IMAGE = null;
 
 const logger = document.getElementById('neuronparse-log');
 const origCanvas = document.getElementById('neuron-canvas-original');
@@ -54,6 +55,12 @@ document.getElementById('neuronparse-close').addEventListener('click', () =>
 {
     if (document.body.className !== 'state-neuronparse')
         return;
+    
+    CURRENT_DATA = null;
+    if (CURRENT_IMAGE)
+        CURRENT_IMAGE.close()
+    CURRENT_IMAGE = null;
+
     DisableTicks();
     document.getElementById('pdf-input').value = '';
     document.body.className = 'state-choose';
@@ -273,6 +280,36 @@ origCanvas.addEventListener('click', (e) =>
     SetSelectedCard(null);
 });
 
+document.getElementById('neuronparse-ocr').addEventListener('click', async () =>
+{
+    if (!CURRENT_IMAGE)
+        return;
+    if (document.body.className !== 'state-neuronparse')
+        return;
+    StartLoading();
+    await EnsureScriptLoaded('parseOCR.js');
+    window.SetupOCRFromImageBitmap('state-neuronparse', CURRENT_IMAGE);
+});
+
+document.getElementById('neuronparse-flip').addEventListener('click', async () =>
+{
+    if (!CURRENT_DATA)
+        return;
+    if (document.body.className !== 'state-neuronparse')
+        return;
+    for (let deck of CURRENT_DATA)
+    {
+        if (deck.which === 'Extra')
+            deck.which = 'Side';
+        else if (deck.which === 'Side')
+            deck.which = 'Extra';
+    }
+    StartLoading();
+    SetLoadingMessage('Redrawing...');
+    await VisualizeCurrentData();
+    document.body.className = 'state-neuronparse';
+});
+
 const headerscore = ((ctx, firstY) =>
 {
     let sum=0,n=0;
@@ -310,11 +347,15 @@ const edgescore = ((ctx, x, firstY) =>
 window.ParseNeuronExport = async function(file)
 {
     CURRENT_DATA = null;
+    if (CURRENT_IMAGE)
+        CURRENT_IMAGE.close();
+    CURRENT_IMAGE = null;
 
     DisableTicks();
     ClearLogs(logger);
 
-    const image = await createImageBitmap(file).catch(() => { throw 'Unsupported/unrecognized image format' });
+    const image = await createImageBitmap(file).catch((e) => { console.error(e); throw 'Unsupported/unrecognized image format' });
+    CURRENT_IMAGE = image;
     
     Log(logger, 'Image loaded.');
     Log(logger, 'Dims: '+image.width+'px by '+image.height+'px.');

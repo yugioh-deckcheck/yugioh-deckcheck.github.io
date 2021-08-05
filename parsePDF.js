@@ -310,6 +310,8 @@ document.getElementById('assign-parse').addEventListener('click', () =>
 
 document.getElementById('assign-ocr').addEventListener('click', async () =>
 {
+    if (!CURRENT_PDF_PAGE)
+        return;
     if (document.body.className !== 'state-assign')
         return;
     StartLoading();

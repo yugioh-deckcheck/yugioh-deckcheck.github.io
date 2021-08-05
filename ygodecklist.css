@@ -1065,6 +1065,13 @@ body.state-noscript, body.state-noasync
 #neuronparse-next { background: #0a0; }
 #neuronparse-next:disabled { background: #8a8; }
 
+#neuronparse-buttons-box
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
 #decklist-box
 {
     display: flex;
