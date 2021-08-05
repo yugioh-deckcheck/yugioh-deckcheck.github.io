@@ -41,7 +41,7 @@ window.CardFingerprint = {
         
         const [attrR, attrG, attrB] = rgbAverage(fingerprintCtx.getImageData(164, 14, 20, 19));
         
-        await EnsureScriptLoaded('neuron/imagehash.js');
+        await EnsureScriptLoaded('/neuron/imagehash.js');
         const hash = ImageHash.Hash(fingerprintCtx.getImageData(25, 54, 150, 150), hashMask);
         
         return [[bgR, bgG, bgB], [attrR, attrG, attrB], hash];

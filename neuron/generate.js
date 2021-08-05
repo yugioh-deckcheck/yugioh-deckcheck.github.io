@@ -40,7 +40,7 @@ const MASK = (async () =>
         const hashes = [];
         let nDone = 0;
         const mask = await MASK;
-        await EnsureScriptLoaded('cardident.js');
+        await EnsureScriptLoaded('/neuron/cardident.js');
         for (const [cardId, artId, artwork] of results)
         {
             const artFile = new File([artwork], (cardId+'_'+artId+'.png'), { type: 'image/png' });
