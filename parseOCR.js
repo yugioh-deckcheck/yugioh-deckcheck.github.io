@@ -203,7 +203,7 @@ const SetSelectedCard = ((card, strong) =>
     selCtx.drawImage(origCanvas, left, top, width, height, 0, 0, width, height);
     
     document.getElementById('ocr-edit-count').value = card.count;
-    document.getElementById('ocr-edit-search').value = /*card.name*/'this field NYI'; // @todo
+    document.getElementById('ocr-edit-search').value = card.name; // @todo
     
     if (card.searchProgress)
     {
@@ -213,23 +213,23 @@ const SetSelectedCard = ((card, strong) =>
     else
         document.getElementById('ocr-edit-results-box').classList.remove('loading');
     
-    const resultsContainer = document.getElementById('ocr-edit-results');
-    while (resultsContainer.lastElementChild)
-        resultsContainer.removeChild(resultsContainer.lastElementChild);
-    
     if (card.searchResults)
     {
+        const resultsContainer = document.getElementById('ocr-edit-results');
+        while (resultsContainer.lastElementChild)
+            resultsContainer.removeChild(resultsContainer.lastElementChild);
         for (const [idxLocale, idxId, idxName] of card.searchResults)
             AddSelectedCardSearchResult(null, idxLocale, idxId, idxName);
     }
     else
-        card.searchPromise = DoCardSearch(card, true);
+        DoCardSearch(card, true);
     
     document.getElementById('ocr-edit-box').classList.add('content');
 });
 
 SetCardResolved = ((card, data, weakName) =>
 {
+    const isRedraw = (card.resolvedTo === data);
     card.resolvedTo = data;
     CardJustResolvedNotify();
     
@@ -270,7 +270,7 @@ SetCardResolved = ((card, data, weakName) =>
         drawCtx.fillText(card.count+'x '+realCardName, left + width*.02, top + height*.5, width*.96);
     });
     
-    if (card === SELECTED_CARD)
+    if (!isRedraw && (card === SELECTED_CARD))
     {
         if (!SELECTED_CARD_STRONG)
         {
@@ -335,6 +335,13 @@ let DoCardSearch = (async (card, full) =>
     const searchName = window.NormalizeNameLax(cardName);
     const searchResults = [];
     card.searchResults = searchResults;
+    
+    if (SELECTED_CARD === card)
+    {
+        const resultsContainer = document.getElementById('ocr-edit-results');
+        while (resultsContainer.lastElementChild)
+            resultsContainer.removeChild(resultsContainer.lastElementChild);
+    }
     /* everything above this comment should be in the initial run, before the first await! */
     
     const idxs = await Promise.all(card.indexes.map((k) => window.CardIndexLoaded.then(() => window.CardIndex.TypeToCards[k])));
@@ -485,6 +492,37 @@ let DoCardSearch = (async (card, full) =>
         drawCtx.fillStyle = '#555';
         drawCtx.fillText('Waiting for input...', left + width*.5, top + height*.5, width*.96);
     }
+});
+
+document.getElementById('ocr-edit-count').addEventListener('change', function()
+{
+    if (!SELECTED_CARD)
+        return;
+    const count = parseInt(this.value);
+    this.blur();
+    if (isNaN(count))
+    {
+        this.value = SELECTED_CARD.count;
+        return;
+    }
+    if (count === SELECTED_CARD.count)
+        return;
+    
+    SELECTED_CARD.count = count;
+    if (SELECTED_CARD.resolvedTo)
+        SetCardResolved(SELECTED_CARD, SELECTED_CARD.resolvedTo, '<#'+SELECTED_CARD.resolvedTo.cardId+'>');
+});
+
+document.getElementById('ocr-edit-search').addEventListener('change', function()
+{
+    if (!SELECTED_CARD)
+        return;
+    const text = this.value;
+    this.blur();
+    if (SELECTED_CARD.name === text)
+        return;
+    SELECTED_CARD.name = text;
+    DoCardSearch(SELECTED_CARD, true);
 });
 
 backButton.addEventListener('click', () =>
@@ -876,7 +914,7 @@ let SetupOCRFromCanvasData = (async () =>
     
     for (const block of blocks)
         for (const card of block.cards)
-            card.searchPromise = DoCardSearch(card);
+            DoCardSearch(card);
 
     EnableTicks();
     document.body.className = 'state-ocr';
