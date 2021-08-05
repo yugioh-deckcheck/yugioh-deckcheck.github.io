@@ -85,6 +85,59 @@ const EnableTicks = (() =>
     }, 1000);
 });
 
+let CURRENT_PARSE_DATA = null;
+
+let UpdateResolvedParseData = (() =>
+{
+    const genCtx = genCanvas.getContext('2d');
+    genCtx.textAlign = 'left';
+    genCtx.textBaseline = 'middle';
+    let allResolved = true;
+    for (const block of CURRENT_PARSE_DATA)
+    {
+        for (const card of block.cards)
+        {
+            const left = Math.min(card.countRect.left, card.nameRect.left);
+            const top = Math.min(card.countRect.top, card.nameRect.top);
+            const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
+            const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
+            
+            if (!isNaN(card.count) && card.resolvedTo)
+            {
+                genCtx.fillStyle = '#fff';
+                genCtx.fillRect(left, top, width, height);
+                
+                genCtx.font = (height*.8)+'px Helvetica, sans-serif';
+                genCtx.fillStyle = '#000';
+                genCtx.fillText(card.count+'x '+card.resolvedTo.name, left + width*.02, top + height*.5, width*.96);
+            }
+            else if (isNaN(card.count) && !card.name)
+            {
+                genCtx.fillStyle = '#ddf';
+                genCtx.fillRect(left, top, width, height);
+            }
+            else
+                allResolved = false;
+        }
+    }
+    
+    if (allResolved)
+    {
+        nextButton.disabledForCard = false;
+        nextButton.disabled = nextButton.disabledForTimer;
+        if (!nextButton.disabledForTimer)
+            nextButton.value = 'Confirm';
+        else
+            nextButton.value = ('Wait '+nextButton.timer+'…');
+    }
+    else
+    {
+        nextButton.disabled = true;
+        nextButton.disabledForCard = true;
+        nextButton.value = '-';
+    }
+});
+
 backButton.addEventListener('click', () =>
 {
     if (document.body.className !== 'state-ocr')
@@ -442,29 +495,29 @@ let SetupOCRFromCanvasData = (async () =>
     }
     
     console.log(blocks);
-    const genCtx = genCanvas.getContext('2d');
-    genCtx.fillStyle = 'rgba(127,127,127,.9)';
-    genCtx.fillRect(0, 0, width, height);
+    await window.CardIndexLoaded;
     
-    genCtx.textAlign = 'left';
-    genCtx.textBaseline = 'middle';
+    const nameIndex = window.CardIndex.StrictNameToCard;
+    let promises = [];
     for (const block of blocks)
     {
         for (const card of block.cards)
         {
-            const left = Math.min(card.countRect.left, card.nameRect.left);
-            const top = Math.min(card.countRect.top, card.nameRect.top);
-            const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
-            const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
-            genCtx.fillStyle = '#fff';
-            genCtx.font = (height*.8)+'px Helvetica, sans-serif';
-            genCtx.fillRect(left, top, width, height);
-            if (isNaN(card.count) && !card.name) continue;
-
-            genCtx.fillStyle = '#000';
-            genCtx.fillText(card.count+'x '+card.name, left + width*.02, top + height*.5, width*.96);
+            if (!card.name) continue;
+            const perfectMatch = nameIndex[window.NormalizeNameStrict(card.name)];
+            if (perfectMatch)
+            {
+                const [ locale, cardId ] = perfectMatch;
+                const o = { locale, cardId };
+                card.resolvedTo = o;
+                promises.push(window.GetCardData(cardId).then((d) => { o.name = d.cardData[locale].name }));
+            }
         }
     }
+    await Promise.all(promises);
+    
+    CURRENT_PARSE_DATA = blocks;
+    UpdateResolvedParseData();
     
     EnableTicks();
     document.body.className = 'state-ocr';

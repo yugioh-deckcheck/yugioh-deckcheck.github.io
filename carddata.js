@@ -76,7 +76,9 @@ window.CardIndexLoaded = (async () =>
         const nameIdx = Object.entries(await (await fetch('https://db.ygorganization.com/data/idx/card/name/'+locale)).json());
         for (const [name, [id]] of nameIdx)
         {
-            nameToCardIdx[window.NormalizeNameStrict(name)] = id;
+            const strictName = window.NormalizeNameStrict(name);
+            if (!(strictName in nameToCardIdx))
+                nameToCardIdx[strictName] = [locale,id];
             (cardToNameIdx[id] || (cardToNameIdx[id] = [])).push([locale,window.NormalizeNameLax(name)]);
         }
     }
@@ -92,13 +94,6 @@ window.CardIndexLoaded = (async () =>
         }),
     });
 })();
-
-const nameIdxO = {};
-const nameList = Promise.all(window.LOCALES.map((locale) => fetch('https://db.ygorganization.com/data/idx/card/name/'+locale).then((r) => r.json()).then((j) => [locale,Object.entries(j).map(([name,[id]]) => { nameIdxO[window.NormalizeNameStrict(name)] = [locale,id]; return [id,window.NormalizeNameLax(name)]; })])));
-window.GetCardNames = (() => nameList);
-
-const nameIdxP = nameList.then(() => nameIdxO);
-window.GetCardNameIndex = (() => nameIdxP);
 
 const _carddataCache = {};
 const _GetCardData = ((id) => fetch('https://db.ygorganization.com/data/card/'+id).then((r) => r.json()));

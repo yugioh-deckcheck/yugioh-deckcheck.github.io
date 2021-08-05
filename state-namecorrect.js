@@ -116,9 +116,9 @@ const tryValidate = (async function(box)
     const idxs = ((box.which === 'main') ? ['monster','spell','trap'] : (box.which === 'extra') ? ['extra'] : ['monster','spell','trap','extra']).map((k) => window.CardIndex.TypeToCards[k]);
 
     const exactMatch = window.CardIndex.StrictNameToCard[window.NormalizeNameStrict(name)];
-    if (exactMatch && idxs.some((idx) => idx.has(exactMatch)))
+    if (exactMatch && idxs.some((idx) => idx.has(exactMatch[1])))
     {
-        setBoxMatch(box, exactMatch);
+        setBoxMatch(box, exactMatch[1]);
         return;
     }
 
