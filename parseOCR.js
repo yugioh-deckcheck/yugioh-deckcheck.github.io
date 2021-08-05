@@ -371,14 +371,17 @@ let DoCardSearch = (async (card) =>
                 if (score >= 4) continue;
 
                 let i;
-                switch (score)
+                switch (Math.floor(score))
                 {
                     case 0:
                         i = nResults0;
                         ++nResults0;
                         break;
                     case 1:
-                        i = nResults0 + nResults1;
+                        const n = nResults0 + nResults1;
+                        for (i = nResults0; i < n; ++i)
+                            if (score < searchResults[i][3])
+                                break;
                         ++nResults1;
                         break;
                     case 2:
@@ -390,7 +393,7 @@ let DoCardSearch = (async (card) =>
                         break;
                 }
                 
-                searchResults.splice(i, 0, [idxLocale, idxId, idxName]);
+                searchResults.splice(i, 0, [idxLocale, idxId, idxName, score]);
                 if (SELECTED_CARD === card)
                     AddSelectedCardSearchResult(i, idxLocale, idxId, idxName);
 

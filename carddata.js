@@ -103,8 +103,8 @@ window.SearchDistanceScore = ((a,b,cutoff) =>
     if (a === b)
         return 0;
     
-    if (b.includes(a))
-        return lenDelta;
+    if ((a.length > 5) && b.includes(a))
+        return 1+((lenDelta-1)/(lenB-1));
         
     if (lenDelta >= cutoff)
         return cutoff;
