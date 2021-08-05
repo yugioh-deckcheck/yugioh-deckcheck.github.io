@@ -28,7 +28,7 @@ class RequestThrottle
 
 window.LOCALES = ['en','de','fr','it','es','pt'];
 
-/* for searching, requires manual input */        window.NormalizeNameLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,' ').trim().toLowerCase());
+/* for searching, requires manual input */        window.NormalizeNameLax    = ((a) => a.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ & /g,' and ').replace(/\W+/g,'').toLowerCase());
 /* for matching,  this can match automatically */ window.NormalizeNameStrict = ((a) => a.normalize('NFC').replace(/\W+/g,' ').trim().toLowerCase());
 
 window.CardIndex = null /*{
@@ -94,6 +94,47 @@ window.CardIndexLoaded = (async () =>
         }),
     });
 })();
+
+window.SearchDistanceScore = ((a,b,cutoff) =>
+{
+    const lenA = a.length, lenB = b.length;
+    const lenDelta = Math.abs(lenA-lenB);
+    
+    if (a === b)
+        return 0;
+    
+    if (b.includes(a))
+        return lenDelta;
+        
+    if (lenDelta >= cutoff)
+        return cutoff;
+
+    let data = Array(lenA+1).fill().map(() => Array(lenB+1));
+    for (let i=0; i <= lenA; ++i)
+        data[i][0] = i;
+    for (let j=0; j <= lenB; ++j)
+        data[0][j] = j;
+    
+    for (let i=1; i <= lenA; ++i)
+    {
+        let stop = true;
+        for (let j=1; j <= lenB; ++j)
+        {
+            let c = +(a.charAt(i-1) !== b.charAt(j-1));
+            data[i][j] = Math.min(data[i-1][j]  +1,
+                                  data[i][j-1]  +1,
+                                  data[i-1][j-1]+c);
+
+            if ((1<i) && (j<1) && (a.charAt(i-1) === b.charAt(j-2)) && (a.charAt(i-2) === b.charAt(j-1)))
+                data[i][j] = Math.min(data[i][j], data[i-2][j-2]+c);
+            if (data[i][j] < cutoff)
+                stop = false;
+        }
+        if (stop)
+            return cutoff;
+    }
+    return data[lenA][lenB];
+});
 
 const _carddataCache = {};
 const _GetCardData = ((id) => fetch('https://db.ygorganization.com/data/card/'+id).then((r) => r.json()));

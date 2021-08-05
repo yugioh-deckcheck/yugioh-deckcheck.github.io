@@ -450,105 +450,37 @@ body.state-noscript, body.state-noasync
     display: none;
 }
 
-#ocr-edit-info-row
-{
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-}
-
 #ocr-edit-show
 {
-    width: 3vw;
-    height: 4.5vw;
-    margin-right: .5vw;
-}
-
-#ocr-edit-grid
-{
-    margin: .5vh 0;
-    padding: .25vh 0;
-    flex-grow: 1;
-    flex-shrink: 1;
-    overflow-y: auto;
-    border-radius: 1vmin;
-    background: #bbb;
-    border: 1px solid #777;
-    
-    display: grid;
-    grid-template-columns: 3.75vw 3.75vw 3.75vw 3.75vw;
-    justify-content: space-evenly;
-    align-content: flex-start;
-}
-
-#ocr-edit-grid > div
-{
-    width: 3.5vw;
-    height: 5.25vw;
-    position: relative;
-    margin: .125vw;
-}
-
-#ocr-edit-grid > div > img
-{
-    width: 100%;
-    height: 100%;
-}
-
-#ocr-edit-grid > div > span
-{
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    padding: .25vmin;
-    background: rgba(0,0,0,0.8);
-    
-    font-size: 1em;
-    font-weight: bold;
-    font-family: Monospace;
-    color: #fff;
-    
-    pointer-events: none;
-    
-    box-sizing: border-box;
     max-width: 100%;
-    overflow: hidden;
 }
 
-#ocr-edit-buttons
+#ocr-edit-count-row
 {
-    display: flex;
-    flex-direction: row;
-    align-items: middle;
+    margin-top: .3vh;
 }
 
-#ocr-edit-left, #ocr-edit-right
+#ocr-edit-count-row > input
 {
-    padding: .25vmin;
-    border: 1px solid #000;
-    border-radius: .5vmin;
-    background: #ddd;
-}
-#ocr-edit-left:hover:not(:disabled), #ocr-edit-right:hover:not(:disabled)
-{
-    background: #eef;
-}
-#ocr-edit-left:active:not(:disabled), #ocr-edit-right:active:not(:disabled)
-{
-    background: #bbb;
-    border-style: inset;
-}
-#ocr-edit-left:disabled, #ocr-edit-right:disabled
-{
-    background: #ddd;
-    color: #999;
-    border-color: #aaa;
+    width: 2em;
 }
 
-#ocr-edit-status
+#ocr-edit-count-row > span
 {
+    margin-left: .2em;
+}
+
+#ocr-edit-search
+{
+    margin-top: .3vh;
+}
+
+#ocr-edit-results
+{
+    margin-top : .3vh;
+    flex-shrink: 1;
     flex-grow: 1;
-    text-align: center;
+    overflow-y: auto;
 }
 
 #ocr-right-box

@@ -64,7 +64,7 @@ const EnableTicks = (() =>
     nextButton.timer = 3;
     nextButton.disabled = true;
     nextButton.disabledForTimer = true;
-    if (!nextButton.disabledForCard)
+    if (!(nextButton.disabledForCard || nextButton.disabledForIncomplete))
         nextButton.value = 'Wait 3…';
 
     __tickItv = window.setInterval(() =>
@@ -76,56 +76,30 @@ const EnableTicks = (() =>
         {
             nextButton.disabledForTimer = false;
             
-            nextButton.disabled = nextButton.disabledForCard;
-            if (!nextButton.disabledForCard)
+            nextButton.disabled = (nextButton.disabledForCard || nextButton.disabledForIncomplete);
+            if (!nextButton.disabled)
                 nextButton.value = 'Confirm';
         }
-        else if (!nextButton.disabledForCard)
+        else if (!(nextButton.disabledForCard || nextButton.disabledForIncomplete))
             nextButton.value = ('Wait '+nextButton.timer+'…');
     }, 1000);
 });
 
+let SELECTED_CARD = null;
 let CURRENT_PARSE_DATA = null;
 
-let UpdateResolvedParseData = (() =>
+let _resolvedNotifyTimeout = 0;
+
+const UpdateIsAllResolved = (() =>
 {
-    const genCtx = genCanvas.getContext('2d');
-    genCtx.textAlign = 'left';
-    genCtx.textBaseline = 'middle';
-    let allResolved = true;
-    for (const block of CURRENT_PARSE_DATA)
+    _resolvedNotifyTimeout = 0;
+    if (!CURRENT_PARSE_DATA.some((block) => block.cards.some((card) => !card.resolvedTo)))
     {
-        for (const card of block.cards)
-        {
-            const left = Math.min(card.countRect.left, card.nameRect.left);
-            const top = Math.min(card.countRect.top, card.nameRect.top);
-            const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
-            const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
-            
-            if (!isNaN(card.count) && card.resolvedTo)
-            {
-                genCtx.fillStyle = '#fff';
-                genCtx.fillRect(left, top, width, height);
-                
-                genCtx.font = (height*.8)+'px Helvetica, sans-serif';
-                genCtx.fillStyle = '#000';
-                genCtx.fillText(card.count+'x '+card.resolvedTo.name, left + width*.02, top + height*.5, width*.96);
-            }
-            else if (isNaN(card.count) && !card.name)
-            {
-                genCtx.fillStyle = '#ddf';
-                genCtx.fillRect(left, top, width, height);
-            }
-            else
-                allResolved = false;
-        }
-    }
-    
-    if (allResolved)
-    {
-        nextButton.disabledForCard = false;
-        nextButton.disabled = nextButton.disabledForTimer;
-        if (!nextButton.disabledForTimer)
+        nextButton.disabledForIncomplete = false;
+        nextButton.disabled = nextButton.disabledForTimer || nextButton.disabledForCard;
+        if (nextButton.disabledForCard)
+            nextButton.value = '-';
+        else if (!nextButton.disabledForTimer)
             nextButton.value = 'Confirm';
         else
             nextButton.value = ('Wait '+nextButton.timer+'…');
@@ -133,9 +107,244 @@ let UpdateResolvedParseData = (() =>
     else
     {
         nextButton.disabled = true;
-        nextButton.disabledForCard = true;
+        nextButton.disabledForIncomplete = true;
         nextButton.value = '-';
     }
+});
+
+const CardJustResolvedNotify = (() =>
+{
+    if (_resolvedNotifyTimeout)
+        return;
+    _resolvedNotifyTimeout = window.setTimeout(100, UpdateIsAllResolved);
+});
+
+const selCanvas = document.getElementById('ocr-edit-show');
+let SetSelectedCard = ((card) =>
+{
+    if (card === SELECTED_CARD) return;
+    
+    const ctx = overlayCanvas.getContext('2d');
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    SELECTED_CARD = card;
+    if (!card)
+    {
+        nextButton.disabledForCard = false;
+        nextButton.disabled = (nextButton.disabledForTimer || nextButton.disabledForIncomplete);
+        if (nextButton.disabledForIncomplete)
+            nextButton.value = '-';
+        else if (nextButton.disabledForTimer)
+            nextButton.value = ('Wait '+nextButton.timer+'…');
+        else
+            nextButton.value = 'Confirm';
+        document.getElementById('ocr-edit-box').classList.remove('content');
+        return;
+    }
+    
+    nextButton.disabled = true;
+    nextButton.disabledForCard = true;
+    nextButton.value = '-';
+    
+    ctx.fillStyle = 'rgba(127,127,127,.4)';
+    ctx.fillRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    
+    const left = Math.min(card.countRect.left, card.nameRect.left);
+    const top = Math.min(card.countRect.top, card.nameRect.top);
+    const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
+    const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
+    
+    ctx.clearRect(left, top, width, height);
+    ctx.drawImage(origCanvas, left, top, width, height, left, top, width, height);
+    
+    ctx.lineWidth = 45;
+    ctx.strokeStyle = '#f33';
+    ctx.strokeRect(left-25, top-25, width+50, height+50);
+    
+    ctx.lineWidth = 45;
+    ctx.strokeStyle = '#f99';
+    ctx.strokeRect(left-70, top-70, width+140, height+140);
+    
+    selCanvas.width = width;
+    selCanvas.height = height;
+    const selCtx = selCanvas.getContext('2d');
+    selCtx.drawImage(origCanvas, left, top, width, height, 0, 0, width, height);
+    
+    document.getElementById('ocr-edit-count').value = card.count;
+    document.getElementById('ocr-edit-search').value = card.name;
+    
+    document.getElementById('ocr-edit-box').classList.add('content');
+});
+
+let DoCardSearch = (async (card) =>
+{
+    const left = Math.min(card.countRect.left, card.nameRect.left);
+    const top = Math.min(card.countRect.top, card.nameRect.top);
+    const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
+    const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
+    
+    const drawCtx = genCanvas.getContext('2d');
+    
+    if (!card.count && !card.name)
+    {
+        card.resolvedTo = { locale: null, cardId: null };
+        drawCtx.fillStyle = '#ddf';
+        drawCtx.fillRect(left, top, width, height);
+        
+        CardJustResolvedNotify();
+        return;
+    }
+
+    const cardName = card.name;
+    const searchName = window.NormalizeNameLax(cardName);
+    const searchResults = [];
+    card.searchResults = searchResults;
+    /* everything above this comment should be in the initial run, before the first await! */
+    
+    const idxs = await Promise.all(card.indexes.map((k) => window.CardIndexLoaded.then(() => window.CardIndex.TypeToCards[k])));
+    if (card.searchResults !== searchResults)
+        return;
+    
+    const perfectMatch = window.CardIndex.StrictNameToCard[window.NormalizeNameStrict(cardName)];
+    if (perfectMatch && idxs.some((idx) => idx.has(perfectMatch[1])))
+    {
+        const [ locale, cardId ] = perfectMatch;
+        card.resolvedTo = { locale, cardId };
+        
+        drawCtx.fillStyle = '#fff';
+        drawCtx.fillRect(left, top, width, height);
+        
+        drawCtx.font = (height*.8)+'px Helvetica, sans-serif';
+        drawCtx.textBaseline = 'middle';
+        drawCtx.textAlign = 'left';
+        drawCtx.fillStyle = '#000';
+        drawCtx.fillText(card.count+'x '+cardName, left + width*.02, top + height*.5, width*.96);
+        
+        const cardData = (await window.GetCardData(cardId));
+        if (cardId !== card.resolvedTo.cardId)
+            return;
+        
+        const realCardName = cardData.cardData[card.resolvedTo.locale].name;
+        drawCtx.fillStyle = '#fff';
+        drawCtx.fillRect(left, top, width, height);
+        
+        drawCtx.font = (height*.8)+'px Helvetica, sans-serif';
+        drawCtx.textBaseline = 'middle';
+        drawCtx.textAlign = 'left';
+        drawCtx.fillStyle = '#000';
+        drawCtx.fillText(card.count+'x '+realCardName, left + width*.02, top + height*.5, width*.96);
+        
+        CardJustResolvedNotify();
+        return;
+    }
+        
+    if (!SELECTED_CARD)
+        SetSelectedCard(card);
+        
+    drawCtx.fillStyle = '#fbb';
+    drawCtx.fillRect(left, top, width, height);
+    
+    drawCtx.font = 'bold '+(height*.8)+'px Monospace';
+    drawCtx.textBaseline = 'middle';
+    drawCtx.textAlign = 'center';
+    drawCtx.fillStyle = '#555';
+    drawCtx.fillText('Searching... (0%)', left + width*.5, top + height*.5, width*.96);
+    
+    if (SELECTED_CARD === card)
+    {
+        /* @todo update zoom window too */
+    }
+    
+    card.searchProgress = 0;
+    
+    let nResults0 = 0, nResults1 = 0, nResults2 = 0;
+    
+    const searchNames = window.CardIndex.CardToNamesLax;
+    const nIdxs = idxs.length;
+    for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
+    {
+        const idx = idxs[iIdxs];
+        const nIdx = idx.size;
+        let iIdx = -1;
+        for (const idxId of idx)
+        {
+            ++iIdx;
+            if (!(iIdx % 1000))
+            {
+                const progress = (((iIdxs/nIdxs)+(iIdx/nIdx/nIdxs))*100).toFixed(1);
+                drawCtx.fillStyle = '#fbb';
+                drawCtx.fillRect(left, top, width, height);
+                
+                drawCtx.font = 'bold '+(height*.8)+'px Monospace';
+                drawCtx.textBaseline = 'middle';
+                drawCtx.textAlign = 'center';
+                drawCtx.fillStyle = '#555';
+                drawCtx.fillText('Searching... ('+progress+'%)', left + width*.5, top + height*.5, width*.96);
+                
+                if (SELECTED_CARD === card)
+                {
+                    /* @todo update zoom window too */
+                }
+                
+                card.searchProgress = progress;
+                
+                await sleep(0);
+                if (card.searchResults !== searchResults)
+                    return;
+            }
+            
+            for (const [idxLocale, idxName] of (searchNames[idxId] || []))
+            {
+                const score = window.SearchDistanceScore(searchName, idxName, 4);
+                if (score >= 4) continue;
+
+                let i;
+                switch (score)
+                {
+                    case 0:
+                        i = nResults0;
+                        ++nResults0;
+                        break;
+                    case 1:
+                        i = nResults0 + nResults1;
+                        ++nResults1;
+                        break;
+                    case 2:
+                        i = nResults0 + nResults1 + nResults2;
+                        ++nResults2;
+                        break;
+                    case 3:
+                        i = searchResults.length;
+                        break;
+                }
+                
+                searchResults.splice(i, 0, [idxLocale, idxId, score]);
+                if (SELECTED_CARD === card)
+                {
+                    /* @todo insert into zoom window too */
+                }
+                break;
+            }
+        }
+    }
+    
+    card.searchProgress = null;
+    
+    drawCtx.fillStyle = '#fbb';
+    drawCtx.fillRect(left, top, width, height);
+    
+    drawCtx.font = 'bold '+(height*.8)+'px Monospace';
+    drawCtx.textBaseline = 'middle';
+    drawCtx.textAlign = 'center';
+    drawCtx.fillStyle = '#555';
+    drawCtx.fillText('Waiting for input...', left + width*.5, top + height*.5, width*.96);
+    
+    if (SELECTED_CARD === card)
+    {
+        /* @todo remove loading text from zoom window */
+    }
+    console.log('Search for \''+searchName+'\' done:');
+    for (const [idxLocale, idxId, score] of searchResults)
+        console.log('- #'+idxId+' ('+idxLocale+'), score '+score);
 });
 
 backButton.addEventListener('click', () =>
@@ -255,7 +464,7 @@ const DoParseBlock = (async ({data, countLeft, countWidth, nameLeft, nameWidth, 
         const nameRect = { left: nameLeft,  width: nameWidth,  top, height };
         const nameTextPromise = GetTextFromRect(data, nameRect);
         
-        const count = parseInt(await countTextPromise);
+        const count = (parseInt(await countTextPromise) || 0);
         const name = (await nameTextPromise).trim();
         
         return {
@@ -489,36 +698,27 @@ let SetupOCRFromCanvasData = (async () =>
         Log(logger, '== '+block.totalCount+' card(s) total');
         for (const card of block.cards)
         {
-            if (isNaN(card.count) && !card.name) continue;
+            if (!card.count && !card.name) continue;
             Log(logger, card.count+'x '+card.name);
         }
     }
     
     console.log(blocks);
-    await window.CardIndexLoaded;
     
-    const nameIndex = window.CardIndex.StrictNameToCard;
-    let promises = [];
-    for (const block of blocks)
-    {
-        for (const card of block.cards)
-        {
-            if (!card.name) continue;
-            const perfectMatch = nameIndex[window.NormalizeNameStrict(card.name)];
-            if (perfectMatch)
-            {
-                const [ locale, cardId ] = perfectMatch;
-                const o = { locale, cardId };
-                card.resolvedTo = o;
-                promises.push(window.GetCardData(cardId).then((d) => { o.name = d.cardData[locale].name }));
-            }
-        }
-    }
-    await Promise.all(promises);
+    for (const card of blocks[0].cards) card.indexes = ['monster'];
+    for (const card of blocks[1].cards) card.indexes = ['spell'];
+    for (const card of blocks[2].cards) card.indexes = ['trap'];
+    for (const card of blocks[3].cards) card.indexes = ['monster','spell','trap','extra'];
+    for (const card of blocks[4].cards) card.indexes = ['extra'];
     
     CURRENT_PARSE_DATA = blocks;
-    UpdateResolvedParseData();
     
+    UpdateIsAllResolved();
+    
+    for (const block of blocks)
+        for (const card of block.cards)
+            card.searchPromise = DoCardSearch(card);
+
     EnableTicks();
     document.body.className = 'state-ocr';
 });
