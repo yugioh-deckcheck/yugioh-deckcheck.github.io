@@ -93,6 +93,10 @@ body.state-noscript, body.state-noasync
     flex-basis: 5vmin;
     flex-grow: 0;
     flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    padding: .5vmin;
+    background: #fff;
 }
 
 #loading-box span
