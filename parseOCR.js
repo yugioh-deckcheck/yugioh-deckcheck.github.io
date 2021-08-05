@@ -864,24 +864,6 @@ let SetupOCRFromCanvasData = (async () =>
     }
     
     const blocks = await Promise.all(blockPromises);
-    Log(logger, ' ');
-    Log(logger, 'NOTE: This is an in-progress tech demo of OCR parsing. Visual feedback and data correction NYI. \'Confirm\' does nothing right now.');
-    Log(logger, ' ');
-    Log(logger, 'Anyway, here is what we think we saw in the data. Your browser console has the whole thing.');
-    for (const block of blocks)
-    {
-        Log(logger, ' ');
-        Log(logger, '=== '+block.header.toUpperCase());
-        Log(logger, '== '+block.totalCount+' card(s) total');
-        for (const card of block.cards)
-        {
-            if (!card.count && !card.name) continue;
-            Log(logger, card.count+'x '+card.name);
-        }
-    }
-    
-    console.log(blocks);
-    
     for (const card of blocks[0].cards) card.indexes = ['monster','spell','trap'];
     for (const card of blocks[1].cards) card.indexes = ['spell','monster','trap'];
     for (const card of blocks[2].cards) card.indexes = ['trap','monster','spell'];
