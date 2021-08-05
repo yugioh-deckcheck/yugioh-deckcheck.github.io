@@ -58,6 +58,6 @@ const MASK = (async () =>
         
         statusElm.innerText = 'Done, offering download';
         
-        DOWNLOAD('imagedb.json', 'data:text/plain;charset=utf-8,'+encodeURIComponent(JSON.stringify(hashes)));
+        DOWNLOAD('imagedb.json', 'data:text/plain;charset=utf-8,'+encodeURIComponent(JSON.stringify(hashes)+'\n'));
     });
 })();
