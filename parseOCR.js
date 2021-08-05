@@ -203,7 +203,7 @@ const SetSelectedCard = ((card, strong) =>
     selCtx.drawImage(origCanvas, left, top, width, height, 0, 0, width, height);
     
     document.getElementById('ocr-edit-count').value = card.count;
-    document.getElementById('ocr-edit-search').value = card.name; // @todo
+    document.getElementById('ocr-edit-search').value = card.name;
     
     if (card.searchProgress)
     {
