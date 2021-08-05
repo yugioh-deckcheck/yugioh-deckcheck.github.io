@@ -179,7 +179,7 @@ const SetSelectedCard = ((card, strong) =>
     nextButton.disabledForCard = true;
     nextButton.value = '-';
     
-    ctx.fillStyle = 'rgba(127,127,127,.4)';
+    ctx.fillStyle = 'rgba(127,127,127,.7)';
     ctx.fillRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     
     const left = Math.min(card.countRect.left, card.nameRect.left);
@@ -188,7 +188,6 @@ const SetSelectedCard = ((card, strong) =>
     const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
     
     ctx.clearRect(left, top, width, height);
-    ctx.drawImage(origCanvas, left, top, width, height, left, top, width, height);
     
     ctx.lineWidth = 45;
     ctx.strokeStyle = '#f33';
@@ -214,8 +213,17 @@ const SetSelectedCard = ((card, strong) =>
     else
         document.getElementById('ocr-edit-results-box').classList.remove('loading');
     
-    for (const [idxLocale, idxId, idxName] of (card.searchResults || []))
-        AddSelectedCardSearchResult(null, idxLocale, idxId, idxName);
+    const resultsContainer = document.getElementById('ocr-edit-results');
+    while (resultsContainer.lastElementChild)
+        resultsContainer.removeChild(resultsContainer.lastElementChild);
+    
+    if (card.searchResults)
+    {
+        for (const [idxLocale, idxId, idxName] of card.searchResults)
+            AddSelectedCardSearchResult(null, idxLocale, idxId, idxName);
+    }
+    else
+        card.searchPromise = DoCardSearch(card, true);
     
     document.getElementById('ocr-edit-box').classList.add('content');
 });
@@ -262,22 +270,57 @@ SetCardResolved = ((card, data, weakName) =>
         drawCtx.fillText(card.count+'x '+realCardName, left + width*.02, top + height*.5, width*.96);
     });
     
-    if ((card === SELECTED_CARD) && !SELECTED_CARD_STRONG)
+    if (card === SELECTED_CARD)
     {
-        for (const block of CURRENT_PARSE_DATA)
+        if (!SELECTED_CARD_STRONG)
         {
-            const card = block.cards.find((c) => !c.resolvedTo);
-            if (card)
+            for (const block of CURRENT_PARSE_DATA)
             {
-                SetSelectedCard(card);
-                return;
+                const card = block.cards.find((c) => !c.resolvedTo);
+                if (card)
+                {
+                    SetSelectedCard(card);
+                    return;
+                }
             }
         }
         SetSelectedCard(null);
     }
 });
 
-let DoCardSearch = (async (card) =>
+origCanvas.addEventListener('click', (e) =>
+{
+    const rect = origCanvas.getBoundingClientRect();
+    const factor = origCanvas.width/(rect.width);
+    const relX = (e.clientX - rect.left)*factor;
+    const relY = (e.clientY - rect.top)*factor;
+    
+    if (!CURRENT_PARSE_DATA) return;
+    for (const {cards} of CURRENT_PARSE_DATA)
+    {
+        for (const card of cards)
+        {
+            const left = Math.min(card.countRect.left, card.nameRect.left);
+            const top = Math.min(card.countRect.top, card.nameRect.top);
+            const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
+            const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
+            
+            const dX = relX - left;
+            const dY = relY - top;
+            if ((0 <= dX) && (dX <= width) && (0 <= dY) && (dY <= height))
+            {
+                if (card === SELECTED_CARD)
+                    SetSelectedCard(null);
+                else
+                    SetSelectedCard(card, true);
+                return;
+            }
+        }
+    }
+    SetSelectedCard(null);
+});
+
+let DoCardSearch = (async (card, full) =>
 {
     
     const drawCtx = genCanvas.getContext('2d');
@@ -302,26 +345,35 @@ let DoCardSearch = (async (card) =>
     if (perfectMatch && idxs.some((idx) => idx.has(perfectMatch[1])))
     {
         const [ locale, cardId ] = perfectMatch;
-        SetCardResolved(card, { locale, cardId }, cardName);
-        return;
+        if (!card.resolvedTo)
+            SetCardResolved(card, { locale, cardId }, cardName);
+
+        if (!full)
+        {
+            card.searchResults = null;
+            return;
+        }
     }
-        
-    if (!SELECTED_CARD)
-        SetSelectedCard(card);
     
     const left = Math.min(card.countRect.left, card.nameRect.left);
     const top = Math.min(card.countRect.top, card.nameRect.top);
     const width = Math.max(card.countRect.left + card.countRect.width, card.nameRect.left + card.nameRect.width) - left;
     const height = Math.max(card.countRect.top + card.countRect.height, card.nameRect.top + card.nameRect.height) - top;
+
+    if (!card.resolvedTo)
+    {
+        if (!SELECTED_CARD)
+            SetSelectedCard(card);
+
+        drawCtx.fillStyle = '#fbb';
+        drawCtx.fillRect(left, top, width, height);
         
-    drawCtx.fillStyle = '#fbb';
-    drawCtx.fillRect(left, top, width, height);
-    
-    drawCtx.font = 'bold '+(height*.8)+'px Monospace';
-    drawCtx.textBaseline = 'middle';
-    drawCtx.textAlign = 'center';
-    drawCtx.fillStyle = '#555';
-    drawCtx.fillText('Searching... (0%)', left + width*.5, top + height*.5, width*.96);
+        drawCtx.font = 'bold '+(height*.8)+'px Monospace';
+        drawCtx.textBaseline = 'middle';
+        drawCtx.textAlign = 'center';
+        drawCtx.fillStyle = '#555';
+        drawCtx.fillText('Searching... (0%)', left + width*.5, top + height*.5, width*.96);
+    }
     
     if (SELECTED_CARD === card)
     {
@@ -332,8 +384,17 @@ let DoCardSearch = (async (card) =>
     card.searchProgress = 0;
     
     let nResults0 = 0, nResults1 = 0, nResults2 = 0;
-    
     const searchNames = window.CardIndex.CardToNamesLax;
+    
+    const resolvedToId = (card.resolvedTo && card.resolvedTo.cardId);
+    if (resolvedToId)
+    {
+        ++nResults0;
+        const vagueName = searchNames[resolvedToId][0][1];
+        searchResults.push([card.resolvedTo.locale, resolvedToId, searchNames[resolvedToId][0][1], 0])
+        AddSelectedCardSearchResult(0, card.resolvedTo.locale, resolvedToId, vagueName);
+    }
+    
     const nIdxs = idxs.length;
     for (let iIdxs=0; iIdxs<nIdxs; ++iIdxs)
     {
@@ -346,14 +407,18 @@ let DoCardSearch = (async (card) =>
             if (!(iIdx % 200))
             {
                 const progress = (((iIdxs/nIdxs)+(iIdx/nIdx/nIdxs))*100).toFixed(1);
-                drawCtx.fillStyle = '#fbb';
-                drawCtx.fillRect(left, top, width, height);
                 
-                drawCtx.font = 'bold '+(height*.8)+'px Monospace';
-                drawCtx.textBaseline = 'middle';
-                drawCtx.textAlign = 'center';
-                drawCtx.fillStyle = '#555';
-                drawCtx.fillText('Searching... ('+progress+'%)', left + width*.5, top + height*.5, width*.96);
+                if (!card.resolvedTo)
+                {
+                    drawCtx.fillStyle = '#fbb';
+                    drawCtx.fillRect(left, top, width, height);
+                    
+                    drawCtx.font = 'bold '+(height*.8)+'px Monospace';
+                    drawCtx.textBaseline = 'middle';
+                    drawCtx.textAlign = 'center';
+                    drawCtx.fillStyle = '#555';
+                    drawCtx.fillText('Searching... ('+progress+'%)', left + width*.5, top + height*.5, width*.96);
+                }
                 
                 if (SELECTED_CARD === card)
                     document.getElementById('ocr-edit-results-progress').innerText = progress;
@@ -364,6 +429,9 @@ let DoCardSearch = (async (card) =>
                 if (card.searchResults !== searchResults)
                     return;
             }
+            
+            if (idxId === resolvedToId)
+                continue;
             
             for (const [idxLocale, idxName] of (searchNames[idxId] || []))
             {
@@ -377,7 +445,7 @@ let DoCardSearch = (async (card) =>
                         i = nResults0;
                         ++nResults0;
                         break;
-                    case 1:
+                    case 1: /* the score for substrings is in [1,2) */
                         const n = nResults0 + nResults1;
                         for (i = nResults0; i < n; ++i)
                             if (score < searchResults[i][3])
@@ -397,7 +465,6 @@ let DoCardSearch = (async (card) =>
                 if (SELECTED_CARD === card)
                     AddSelectedCardSearchResult(i, idxLocale, idxId, idxName);
 
-
                 break;
             }
         }
@@ -407,14 +474,17 @@ let DoCardSearch = (async (card) =>
     if (SELECTED_CARD === card)
         document.getElementById('ocr-edit-results-box').classList.remove('loading');
     
-    drawCtx.fillStyle = '#fbb';
-    drawCtx.fillRect(left, top, width, height);
-    
-    drawCtx.font = 'bold '+(height*.8)+'px Monospace';
-    drawCtx.textBaseline = 'middle';
-    drawCtx.textAlign = 'center';
-    drawCtx.fillStyle = '#555';
-    drawCtx.fillText('Waiting for input...', left + width*.5, top + height*.5, width*.96);
+    if (!card.resolvedTo)
+    {
+        drawCtx.fillStyle = '#fbb';
+        drawCtx.fillRect(left, top, width, height);
+        
+        drawCtx.font = 'bold '+(height*.8)+'px Monospace';
+        drawCtx.textBaseline = 'middle';
+        drawCtx.textAlign = 'center';
+        drawCtx.fillStyle = '#555';
+        drawCtx.fillText('Waiting for input...', left + width*.5, top + height*.5, width*.96);
+    }
 });
 
 backButton.addEventListener('click', () =>
