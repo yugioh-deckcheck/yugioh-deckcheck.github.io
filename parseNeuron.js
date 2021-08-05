@@ -422,7 +422,8 @@ window.ParseNeuronExport = async function(file)
         }
         else if (decks.length === 2)
         {
-            const extraDeckCards = await GetExtraDeckCards();
+            await window.CardIndexLoaded;
+            const extraDeckCards = window.CardIndex.TypeToCards.extra;
             decks[1].which = (decks[1].cards.some(({current: {cardId}}) => !extraDeckCards.has(cardId)) ? 'Side' : 'Extra');
         }
         
