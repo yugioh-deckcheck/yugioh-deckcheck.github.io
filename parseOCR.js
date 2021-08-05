@@ -342,9 +342,9 @@ let DoCardSearch = (async (card) =>
     {
         /* @todo remove loading text from zoom window */
     }
-    console.log('Search for \''+searchName+'\' done:');
+    Log(logger, 'Search for \''+searchName+'\' done:');
     for (const [idxLocale, idxId, score] of searchResults)
-        console.log('- #'+idxId+' ('+idxLocale+'), score '+score);
+        Log(logger, '- #'+idxId+' ('+idxLocale+'), score '+score);
 });
 
 backButton.addEventListener('click', () =>
