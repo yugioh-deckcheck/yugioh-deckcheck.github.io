@@ -86,14 +86,27 @@ const EnableTicks = (() =>
 });
 
 let SELECTED_CARD = null;
-let SELECTED_CARD_STRONG = false;
 let CURRENT_PARSE_DATA = null;
+
+const isProperlyResolved = ((card) =>
+{
+    const {count, resolvedTo} = card;
+    if (!resolvedTo)
+        return false;
+    return ((!resolvedTo.cardId) || ((1 <= count) && (count <= 3)));
+});
 
 let _resolvedNotifyTimeout = 0;
 const UpdateIsAllResolved = (() =>
 {
     _resolvedNotifyTimeout = 0;
-    if (!CURRENT_PARSE_DATA.some((block) => block.cards.some((card) => !card.resolvedTo)))
+    if (CURRENT_PARSE_DATA.some((block) => block.cards.some((card) => !isProperlyResolved(card))))
+    {
+        nextButton.disabled = true;
+        nextButton.disabledForIncomplete = true;
+        nextButton.value = '-';
+    }
+    else
     {
         nextButton.disabledForIncomplete = false;
         nextButton.disabled = nextButton.disabledForTimer || nextButton.disabledForCard;
@@ -103,12 +116,6 @@ const UpdateIsAllResolved = (() =>
             nextButton.value = 'Confirm';
         else
             nextButton.value = ('Wait '+nextButton.timer+'…');
-    }
-    else
-    {
-        nextButton.disabled = true;
-        nextButton.disabledForIncomplete = true;
-        nextButton.value = '-';
     }
 });
 
@@ -153,9 +160,8 @@ const AddSelectedCardSearchResult = ((pos, locale, id, vagueName) =>
 });
 
 const selCanvas = document.getElementById('ocr-edit-show');
-const SetSelectedCard = ((card, strong) =>
+const SetSelectedCard = ((card) =>
 {
-    SELECTED_CARD_STRONG = strong;
     if (card === SELECTED_CARD) return;
     
     const ctx = overlayCanvas.getContext('2d');
@@ -272,16 +278,13 @@ SetCardResolved = ((card, data, weakName) =>
     
     if (!isRedraw && (card === SELECTED_CARD))
     {
-        if (!SELECTED_CARD_STRONG)
+        for (const block of CURRENT_PARSE_DATA)
         {
-            for (const block of CURRENT_PARSE_DATA)
+            const card = block.cards.find((c) => !isProperlyResolved(c));
+            if (card)
             {
-                const card = block.cards.find((c) => !c.resolvedTo);
-                if (card)
-                {
-                    SetSelectedCard(card);
-                    return;
-                }
+                SetSelectedCard(card);
+                return;
             }
         }
         SetSelectedCard(null);
@@ -312,7 +315,7 @@ origCanvas.addEventListener('click', (e) =>
                 if (card === SELECTED_CARD)
                     SetSelectedCard(null);
                 else
-                    SetSelectedCard(card, true);
+                    SetSelectedCard(card);
                 return;
             }
         }

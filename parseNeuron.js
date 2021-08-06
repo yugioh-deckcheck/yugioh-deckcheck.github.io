@@ -431,6 +431,9 @@ window.ParseNeuronExport = async function(file)
                         })
                         .filter((o)=>(o))
                         .sort((a,b) => (b.scores.total - a.scores.total));
+                    
+                    if (!scores.length)
+                        throw ('Failed to find any artwork matches for card in deck '+decks.length+' at ('+gridX+','+gridY+')');
 
                     GetArtwork(scores[0].cardId, scores[0].artId); // prefetch
                     
