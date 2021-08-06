@@ -766,7 +766,7 @@ let SetupOCRFromCanvasData = (async () =>
     {
         const lum = lumavg(fullImageData, leftMargin, y, marginWidth, 1);
         const white = whiteblock(fullImageData, leftMargin, y, marginWidth, 1);
-        if ((lum < 10) && (white < 5))
+        if ((lum < 100) && (white < 5))
         {
             if (currentHLine)
                 ++currentHLine.height;
@@ -779,20 +779,12 @@ let SetupOCRFromCanvasData = (async () =>
     
     Log(logger, 'Found '+hlinesTop.length+' full hlines');
     
-    if (hlinesTop.length < 3)
-        throw ('Failed to find top hlines');
+    if (hlinesTop.length !== 21)
+        throw ('Unexpected number of top hlines; expected 21, got '+hlinesTop.length);
     
+    // top and bottom line are bolded, rest is regular height
     const topHLine1 = hlinesTop.shift();
     const bottomHLine1 = hlinesTop.pop();
-    
-    // assert hline pattern - top and bottom line are bolded, rest is regular height
-    if (topHLine1.height < 17)
-        throw ('First hline found at y='+topHLine1.top+' not expected height, expected >=17, got '+topHLine1.height);
-    if (bottomHLine1.height < 17)
-        throw ('Last hline found at y='+bottomHLine1.top+' not expected height, expected >=17, got '+bottomHLine1.height);
-    for (const {top,height} of hlinesTop)
-        if (height > 14)
-            throw ('Middle hline found at y='+top+' not expected height, expected <= 14, got '+height);
     
     SetLoadingMessage('Tracing image structure...\nFinding vertical lines...');
     await sleep(0);
@@ -806,7 +798,7 @@ let SetupOCRFromCanvasData = (async () =>
     {
         const lum = lumavg(fullImageData, x, vlineStart, 1, vlineHeight);
         const white = whiteblock(fullImageData, x, vlineStart, 1, vlineHeight);
-        if ((lum < 10) && (white < 5))
+        if ((lum < 100) && (white < 5))
         {
             if (currentVLine)
                 ++currentVLine.width;
@@ -822,12 +814,6 @@ let SetupOCRFromCanvasData = (async () =>
     // assert vline pattern - there should be seven in total: bold, narrow, bold, narrow, bold, narrow, bold
     if (vlines.length !== 7)
         throw ('Unexpected number of vlines; expected 7, got '+vlines.length);
-    for (let i=0; i<7; i+=2)
-        if (vlines[i].width < 17)
-            throw ('Odd vline at i='+i+' is too narrow, expected width >= 17, got '+vlines[i].width+' instead');
-    for (let i=1; i<7; i+=2)
-        if (vlines[i].width > 14)
-            throw ('Even vline at i='+i+' is too wide, expected width <= 14, got '+vlines[i].width+' instead');
     
     SetLoadingMessage('Tracing image structure...\nFinding more horizontal lines...');
     await sleep(0);
@@ -841,7 +827,7 @@ let SetupOCRFromCanvasData = (async () =>
     {
         const lum = lumavg(fullImageData, hline2Start, y, hline2Width, 1);
         const white = whiteblock(fullImageData, hline2Start, y, hline2Width, 1);
-        if ((lum < 10) && (white < 5))
+        if ((lum < 100) && (white < 5))
         {
             if (currentHLine2)
                 ++currentHLine2.height;
@@ -854,20 +840,12 @@ let SetupOCRFromCanvasData = (async () =>
     
     Log(logger, 'Found '+hlinesBottom.length+' bottom hlines');
     
-    if (hlinesBottom.length < 3)
-        throw 'Failed to find bottom hlines';
+    if (hlinesBottom.length !== 18)
+        throw ('Unexpected number of vlines; expected 18, got '+hlinesBottom.length);
 
+    // top is bolded (as it should be), but for some reason the bottom isn't along the entire line (gg konami)
     const topHLine2 = hlinesBottom.shift();
     const bottomHLine2 = hlinesBottom.pop();
-    
-    // assert hline pattern - top is bolded (as it should be), but for some reason the bottom isn't along the entire line (gg konami)
-    if (topHLine2.height < 17)
-        throw ('First hline found at y='+topHLine2.top+' not expected height, expected >=17, got '+topHLine2.height);
-    if ((bottomHLine2.height < 17) && (bottomHLine2.height > 14))
-        throw ('Last hline found at y='+bottomHLine2.top+' not expected height, expected >=17 or <=14, got '+bottomHLine2.height);
-    for (const {top,height} of hlinesBottom)
-        if (height > 14)
-            throw ('Middle hline found at y='+top+' not expected height, expected <= 14, got '+height);
     
     SetLoadingMessage('Image structure OK.\nWaiting for OCR startup...');
     await __ocrLoaded;
@@ -949,6 +927,7 @@ window.SetupOCRFromImageBitmap = async function(backTo, bitmap)
         SetCanvasDimensions(width, 8192);
         
         const ctx = origCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(bitmap, 0, 0, width, 8192);
         bitmap.close();
         Log(logger, 'Done.');
