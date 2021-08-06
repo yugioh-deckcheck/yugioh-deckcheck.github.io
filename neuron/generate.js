@@ -62,7 +62,7 @@ startButton.addEventListener('click', async () =>
         statusElm.innerText = 'Processing artwork count index...';
         await sleep(0);
         
-        const promises = [];
+        let promises = null;
         for (const [count, cards] of artIndex)
         {
             for (const cardId of cards)
@@ -71,8 +71,21 @@ startButton.addEventListener('click', async () =>
                 const ourIdx = (cardIndex[cardId] && cardIndex[cardId].artworks);
                 if (ourIdx && (ourIdx.size >= count))
                     continue;
-                promises.push(GetMissingArtwork(cardId, ourIdx));
+                const p = GetMissingArtwork(cardId, ourIdx);
+                if (promises)
+                    promises.push(p);
+                else
+                {
+                    try { promises = [await p]; }
+                    catch (e) { statusElm.innerText = 'You are not supposed to be here...'; return; }
+                }
             }
+        }
+        
+        if (!promises)
+        {
+            statusElm.innerText = 'Nothing to do here.';
+            return;
         }
         
         statusElm.innerText = 'Requesting missing artwork...';
