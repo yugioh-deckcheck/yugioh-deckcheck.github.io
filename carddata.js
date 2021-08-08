@@ -74,8 +74,11 @@ window.CardIndexLoaded = (async () =>
     for (const locale of window.LOCALES)
     {
         const nameIdx = Object.entries(await (await fetch('https://db.ygorganization.com/data/idx/card/name/'+locale)).json());
-        for (const [name, [id]] of nameIdx)
+        for (const [name, ids] of nameIdx)
         {
+            const id = ids.find((i) => (i > 0));
+            if (!id)
+                continue;
             const strictName = window.NormalizeNameStrict(name);
             if (!(strictName in nameToCardIdx))
                 nameToCardIdx[strictName] = [locale,id];
