@@ -685,7 +685,9 @@ const DoParseBlock = (async ({data, countLeft, countWidth, nameLeft, nameWidth, 
         const nameRect = { left: nameLeft,  width: nameWidth,  top, height };
         const nameTextPromise = GetTextFromRect(data, nameRect);
         
-        const count = (parseInt(await countTextPromise) || 0);
+        let count = (parseInt(await countTextPromise) || 0);
+        if (count === 4)
+            count = 1;
         const name = (await nameTextPromise).trim();
         
         return {
@@ -782,8 +784,9 @@ let SetupOCRFromCanvasData = (async () =>
     
     Log(logger, 'Found '+hlinesTop.length+' full hlines');
     
-    if (hlinesTop.length !== 21)
-        throw ('Unexpected number of top hlines; expected 21, got '+hlinesTop.length);
+    const isNeuron = (hlinesTop.length === 33);
+    if (!isNeuron && (hlinesTop.length !== 21))
+        throw ('Unexpected number of top hlines; expected 21 or 33, got '+hlinesTop.length);
     
     // top and bottom line are bolded, rest is regular height
     const topHLine1 = hlinesTop.shift();
@@ -844,7 +847,7 @@ let SetupOCRFromCanvasData = (async () =>
     Log(logger, 'Found '+hlinesBottom.length+' bottom hlines');
     
     if (hlinesBottom.length !== 18)
-        throw ('Unexpected number of vlines; expected 18, got '+hlinesBottom.length);
+        throw ('Unexpected number of bottom hlines; expected 18, got '+hlinesBottom.length);
 
     // top is bolded (as it should be), but for some reason the bottom isn't along the entire line (gg konami)
     const topHLine2 = hlinesBottom.shift();
@@ -889,6 +892,13 @@ let SetupOCRFromCanvasData = (async () =>
             hlines: hlinesBottom,
             totalHLine: bottomHLine2,
         });
+    }
+    
+    if (isNeuron)
+    { /* extra <-> side are swapped on neuron parses */
+        const t = blockPromises[4];
+        blockPromises[4] = blockPromises[3];
+        blockPromises[3] = t;
     }
     
     const blocks = await Promise.all(blockPromises);
