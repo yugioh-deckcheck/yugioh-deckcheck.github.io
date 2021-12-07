@@ -70,7 +70,7 @@ const remapSingleDeck = ((cards) => cards.map(({current: {cardId}}) => cardId));
 const remapCurrentData = (() =>
 {
     let main = [], extra = [], side = [];
-    for (const {which, cards} of CURRENT_DATA)
+    for (const {which, cards} of CURRENT_DATA.decks)
     {
         if (which === 'Main')
             main = remapSingleDeck(cards);
@@ -110,9 +110,10 @@ const cardname = (async (cardid) =>
 
 const VisualizeCurrentData = (async () =>
 {
-    const decks = CURRENT_DATA;
+    const { format, decks } = CURRENT_DATA;
+    const { FIRST_HEADER_START, HEADER_HEIGHT, CARD_WIDTH, CARD_HEIGHT, LABEL_FONT, HEADER_FONT } = format;
     
-    Log(logger, 'Visualizing, please wait...');
+    Log(logger, 'Visualizing...');
     DisableTicks();
     
     genCanvas.classList.add('redrawing');
@@ -123,27 +124,27 @@ const VisualizeCurrentData = (async () =>
     await Promise.all(decks.map(async ({top, which, cards}) => 
     {
         genCtx.fillStyle = '#335';
-        genCtx.fillRect(0, 0, 496, 64);
+        genCtx.fillRect(0, 0, genCanvas.width, FIRST_HEADER_START);
         
         genCtx.fillStyle = '#fff';
         genCtx.textAlign = 'left';
         genCtx.textBaseline = 'middle';
-        genCtx.font = '18px bold Monospace';
-        genCtx.fillText('Neuron export parse results:', 10, 32, 476);
+        genCtx.font = LABEL_FONT;
+        genCtx.fillText('Neuron export parse results:', 10, FIRST_HEADER_START / 2, genCanvas.width - 20);
         
         
         genCtx.fillStyle = '#113';
-        genCtx.fillRect(0, top, 496, -32);
+        genCtx.fillRect(0, top, genCanvas.width, -(HEADER_HEIGHT));
         
         genCtx.fillStyle = '#fff';
         genCtx.textAlign = 'left';
         genCtx.textBaseline = 'middle';
-        genCtx.font = '14px Monospace';
-        genCtx.fillText(which+' Deck: '+cards.length+' cards', 30, top-16, 436);
+        genCtx.font = HEADER_FONT;
+        genCtx.fillText(which+' Deck: '+cards.length+' cards', 30, top - (HEADER_HEIGHT / 2), genCanvas.width - 60);
         
         await Promise.all(cards.map(async ({xLeft, yTop, current: {cardId, artId}}) =>
         {
-            genCtx.drawImage(await GetArtwork(cardId, artId), xLeft, yTop, 48, 72);
+            genCtx.drawImage(await GetArtwork(cardId, artId), xLeft, yTop, CARD_WIDTH, CARD_HEIGHT);
         }));
     }));
 
@@ -215,7 +216,7 @@ SetSelectedCard = ((card) =>
 {
     if (__selectedCard === card) card = null;
     const ctx = overlayCanvas.getContext('2d');
-    ctx.clearRect(0, 0, 496, overlayCanvas.height);
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     __selectedCard = card;
     if (!card)
     {
@@ -234,22 +235,23 @@ SetSelectedCard = ((card) =>
     nextButton.value = '-';
     
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, 496, overlayCanvas.height);
+    ctx.fillRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     
-    ctx.clearRect(card.xLeft, card.yTop, 48, 72);
+    const { CARD_WIDTH: width, CARD_HEIGHT: height } = CURRENT_DATA.format;
+    ctx.clearRect(card.xLeft, card.yTop, width, height);
     
-    ctx.drawImage(origCanvas, card.xLeft, card.yTop, 48, 72, card.xLeft, card.yTop, 48, 72);
+    ctx.drawImage(origCanvas, card.xLeft, card.yTop, width, height, card.xLeft, card.yTop, width, height);
     
     ctx.lineWidth = 5;
     ctx.strokeStyle = '#33f';
-    ctx.strokeRect(card.xLeft, card.yTop, 48, 72);
+    ctx.strokeRect(card.xLeft, card.yTop, width, height);
     
     ctx.lineWidth = 5;
     ctx.strokeStyle = '#99f';
-    ctx.strokeRect(card.xLeft-5, card.yTop-5, 58, 82);
+    ctx.strokeRect(card.xLeft-5, card.yTop-5, width+10, height+10);
     
     const selCtx = selCanvas.getContext('2d');
-    selCtx.drawImage(origCanvas, card.xLeft, card.yTop, 48, 72, 0, 0, selCanvas.width, selCanvas.height);
+    selCtx.drawImage(origCanvas, card.xLeft, card.yTop, width, height, 0, 0, selCanvas.width, selCanvas.height);
     
     __selectedGridOffset = 0;
     RedrawSelectedGrid();
@@ -259,18 +261,20 @@ SetSelectedCard = ((card) =>
 origCanvas.addEventListener('click', (e) =>
 {
     const rect = origCanvas.getBoundingClientRect();
-    const factor = 496/(rect.width);
+    const factor = (origCanvas.width)/(rect.width);
     const relX = (e.clientX - rect.left)*factor;
     const relY = (e.clientY - rect.top)*factor;
     
     if (!CURRENT_DATA) return;
-    for (const {cards} of CURRENT_DATA)
+    
+    const {format,decks} = CURRENT_DATA;
+    for (const {cards} of decks)
     {
         for (const card of cards)
         {
             const dX = relX - card.xLeft;
             const dY = relY - card.yTop;
-            if ((0 <= dX) && (dX <= 48) && (0 <= dY) && (dY <= 72))
+            if ((0 <= dX) && (dX <= format.CARD_WIDTH) && (0 <= dY) && (dY <= format.CARD_HEIGHT))
             {
                 SetSelectedCard(card);
                 return;
@@ -297,7 +301,7 @@ document.getElementById('neuronparse-flip').addEventListener('click', async () =
         return;
     if (document.body.className !== 'state-neuronparse')
         return;
-    for (let deck of CURRENT_DATA)
+    for (let deck of CURRENT_DATA.decks)
     {
         if (deck.which === 'Extra')
             deck.which = 'Side';
@@ -310,10 +314,10 @@ document.getElementById('neuronparse-flip').addEventListener('click', async () =
     document.body.className = 'state-neuronparse';
 });
 
-const headerscore = ((ctx, firstY) =>
+const headerscore = ((ctx, firstX, firstY) =>
 {
     let sum=0,n=0;
-    const data = ctx.getImageData(1, firstY, 1, 32).data;
+    const data = ctx.getImageData(firstX, firstY, 2, 32).data;
     for (let i=0; i<data.length; i+=4)
     {
         const r = data[i+0];
@@ -327,10 +331,10 @@ const headerscore = ((ctx, firstY) =>
     return (sum/n);
 });
 
-const edgescore = ((ctx, x, firstY) =>
+const edgescore = ((ctx, x, firstY, height) =>
 {
     let sum=0,n=0;
-    const data = ctx.getImageData(x, firstY, 1, 72).data;
+    const data = ctx.getImageData(x, firstY, 1, height).data;
     for (let i=0; i<data.length; i+=4)
     {
         const r = data[i+0];
@@ -360,138 +364,185 @@ window.ParseNeuronExport = async function(file)
     Log(logger, 'Image loaded.');
     Log(logger, 'Dims: '+image.width+'px by '+image.height+'px.');
     
-    const height = Math.round(image.height*(496/image.width));
-    if (image.width !== 496)
-        Log(logger, 'Conv: 496px by '+height+'px.');
-
-    origCanvas.width = 496;
-    origCanvas.height = height;
-    
-    const origCtx = origCanvas.getContext('2d');
-    origCtx.drawImage(image, 0, 0, 496, height);
-    
-    genCanvas.width = 496;
-    genCanvas.height = height;
-    genCanvas.getContext('2d').clearRect(0, 0, 496, height);
-    
-    overlayCanvas.width = 496;
-    overlayCanvas.height = height;
-    SetSelectedCard(null);
-    
-    try
-    {
-        if (headerscore(origCtx, 64) < 200)
-            throw 'Header score for Main Deck header too low. Are you sure this is a Neuron export?';
-        
-        SetLoadingMessage('Analyzing...');
-        // ensure this actually gives us a render tick to avoid freezing
-        await Promise.all([EnsureScriptLoaded('neuron/cardident.js'), sleep(0)]);
-        
-        let top = 64+32;
-        let decks = [];
-        const imagedb = (await IMAGE_DB);
-        while (top+72 < height)
+    for (const format of [
         {
-            let rows = 1;
-            for (;;++rows)
+            NAME: 'Live Neuron',
+            IMG_WIDTH: 1080,
+            FIRST_HEADER_START: 72,
+            HEADER_HEIGHT: 48,
+            CARD_HEIGHT: 154,
+            CARD_WIDTH: 106,
+            LEFT_BORDER_STEP: 2,
+            LEFT_BORDER_MAX: 40,
+            SPACING_MIN: 2,
+            SPACING_MAX: 10,
+            SPACING_STEP: 1,
+            
+            LABEL_FONT: 'bold 42px sans-serif',
+            HEADER_FONT: 'bold 26px sans-serif',
+        },
+        {
+            NAME: 'Early Neuron',
+            IMG_WIDTH: 496,
+            FIRST_HEADER_START: 64,
+            HEADER_HEIGHT: 32,
+            CARD_HEIGHT: 72,
+            CARD_WIDTH: 48,
+            LEFT_BORDER_STEP: 1,
+            LEFT_BORDER_MAX: 20,
+            SPACING_MIN: 1,
+            SPACING_MAX: 3,
+            SPACING_STEP: 1,
+            
+            LABEL_FONT: 'bold 18px Monospace',
+            HEADER_FONT_SIZE: 'bold 14px Monospace',
+        }
+    ])
+    {
+        const { NAME, IMG_WIDTH, FIRST_HEADER_START, HEADER_HEIGHT, CARD_HEIGHT, CARD_WIDTH, LEFT_BORDER_STEP, LEFT_BORDER_MAX, SPACING_MIN, SPACING_MAX, SPACING_STEP } = format;
+        Log(logger, ' ');
+        Log(logger, 'Trying \''+NAME+'\'...');
+        const height = Math.round(image.height*(IMG_WIDTH/image.width));
+        if (image.width !== IMG_WIDTH)
+            Log(logger, 'Conv: '+IMG_WIDTH+'px by '+height+'px.');
+
+        origCanvas.width = IMG_WIDTH;
+        origCanvas.height = height;
+        
+        const origCtx = origCanvas.getContext('2d');
+        origCtx.drawImage(image, 0, 0, IMG_WIDTH, height);
+        
+        genCanvas.width = IMG_WIDTH;
+        genCanvas.height = height;
+        genCanvas.getContext('2d').clearRect(0, 0, IMG_WIDTH, height);
+        
+        overlayCanvas.width = IMG_WIDTH;
+        overlayCanvas.height = height;
+        SetSelectedCard(null);
+        
+        try
+        {
+            let borderLeftX = 0;
+            while (headerscore(origCtx, borderLeftX, FIRST_HEADER_START) < 200)
             {
-                if (height < top+72*rows+32)
-                { // last deck
-                    rows = Math.floor((height-top)/72);
-                    break;
-                }
-                if (headerscore(origCtx, top+72*rows) >= 200)
-                    break;
+                borderLeftX += LEFT_BORDER_STEP;
+                if (LEFT_BORDER_MAX < borderLeftX)
+                    throw 'Header score for Main Deck header too low.';
             }
             
-            let cards = [];
-            for (let gridY=0; gridY<rows; ++gridY)
+            SetLoadingMessage('Analyzing \''+NAME+'\'...');
+            // ensure this actually gives us a render tick to avoid freezing
+            await Promise.all([EnsureScriptLoaded('neuron/cardident.js'), sleep(0)]);
+            
+            let top = FIRST_HEADER_START + HEADER_HEIGHT;
+            let decks = [];
+            const imagedb = (await IMAGE_DB);
+            while (top+CARD_HEIGHT < height)
             {
-                const yTop = top + 72*gridY;
-                let xLeft = 0;
-                for (let gridX=0; gridX<10; ++gridX, xLeft += 48)
+                let rows = 1;
+                for (;;++rows)
                 {
-                    const margin1score = edgescore(origCtx, xLeft+1, yTop);
-                    const margin2score = edgescore(origCtx, xLeft+2, yTop);
-                    const margin3score = edgescore(origCtx, xLeft+3, yTop);
-                    if (margin1score > 45) xLeft += 1;
-                    else if (margin2score > 45) xLeft += 2;
-                    else if (margin3score > 45) xLeft += 3;
-                    else break;
-                    
-                    const fingerprint = await CardFingerprint.Fingerprint(origCanvas, xLeft, yTop, 48, 72);
-                    await sleep(0); // prevent browser freezes
-                    
-                    const scores =
-                      imagedb
-                        .map(([cardId,artId,thisFingerprint]) => {
-                            const scores = CardFingerprint.Compare(fingerprint, thisFingerprint);
-                            if (scores.total > 40)
-                                return {cardId, artId, scores}
-                        })
-                        .filter((o)=>(o))
-                        .sort((a,b) => (b.scores.total - a.scores.total));
-                    
-                    if (!scores.length)
-                        throw ('Failed to find any artwork matches for card in deck '+decks.length+' at ('+gridX+','+gridY+')');
-
-                    GetArtwork(scores[0].cardId, scores[0].artId); // prefetch
-                    
-                    cards.push({
-                        gridX,
-                        gridY,
-                        xLeft,
-                        yTop,
-                        current: scores[0],
-                        scores
-                    });
+                    if (height < top + rows * CARD_HEIGHT + HEADER_HEIGHT)
+                    { // last deck
+                        rows = Math.floor((height-top)/CARD_HEIGHT);
+                        break;
+                    }
+                    if (headerscore(origCtx, borderLeftX, top + rows * CARD_HEIGHT) >= 200)
+                        break;
                 }
+                
+                let cards = [];
+                for (let gridY=0; gridY<rows; ++gridY)
+                {
+                    const yTop = top + CARD_HEIGHT*gridY;
+                    let xLeft = borderLeftX - SPACING_MIN;
+                    for (let gridX=0; gridX<10; ++gridX, xLeft += CARD_WIDTH)
+                    {
+                        let offs = SPACING_MIN;
+                        for (; offs <= SPACING_MAX; offs += SPACING_STEP)
+                        {
+                            if (edgescore(origCtx, xLeft+offs, yTop, CARD_HEIGHT) > 45)
+                                break;
+                        }
+                        if (offs > SPACING_MAX)
+                            break;
+                        xLeft += offs;
+                        
+                        const fingerprint = await CardFingerprint.Fingerprint(origCanvas, xLeft, yTop, CARD_WIDTH, CARD_HEIGHT);
+                        await sleep(0); // prevent browser freezes
+                        
+                        const scores =
+                          imagedb
+                            .map(([cardId,artId,thisFingerprint]) => {
+                                const scores = CardFingerprint.Compare(fingerprint, thisFingerprint);
+                                if (scores.total > 40)
+                                    return {cardId, artId, scores}
+                            })
+                            .filter((o)=>(o))
+                            .sort((a,b) => (b.scores.total - a.scores.total));
+                        
+                        if (!scores.length)
+                            throw ('Failed to find any artwork matches for card in deck '+decks.length+' at ('+gridX+','+gridY+').');
+
+                        GetArtwork(scores[0].cardId, scores[0].artId); // prefetch
+                        
+                        cards.push({
+                            gridX,
+                            gridY,
+                            xLeft,
+                            yTop,
+                            current: scores[0],
+                            scores
+                        });
+                    }
+                }
+                decks.push({top, cards})
+                top += CARD_HEIGHT*rows; // card height
+                top += HEADER_HEIGHT;    // skip header
             }
-            decks.push({top, cards})
-            top += 72*rows; // card height
-            top += 32;      // skip header
+            
+            if (!decks.length)
+                throw 'Did not find any Decks. Not sure how this happened.';
+            
+            if (decks.length > 3)
+                throw ('Found too many Decks ('+decks.length+'), expected no more than 3.');
+            
+            decks[0].which = 'Main';
+            if (decks.length === 3)
+            {
+                decks[1].which = 'Extra';
+                decks[2].which = 'Side';
+            }
+            else if (decks.length === 2)
+            {
+                await window.CardIndexLoaded;
+                const extraDeckCards = window.CardIndex.TypeToCards.extra;
+                decks[1].which = (decks[1].cards.some(({current: {cardId}}) => !extraDeckCards.has(cardId)) ? 'Side' : 'Extra');
+            }
+            
+            CURRENT_DATA = { format, decks };
+            
+            SetLoadingMessage('Processing \''+NAME+'\'...');
+            Log(logger, '\''+NAME+'\' OK.');
+            Log(logger, ' ');
+            
+            await sleep(0);
+            
+            await VisualizeCurrentData();
+            break;
+        } catch (e) {
+            console.error(e);
+            Log(logger, ' ');
+            Log(logger, '='.repeat(20));
+            Log(logger, NAME+' - Failed:');
+            Log(logger, ''+e);
+            Log(logger, '='.repeat(20));
+            
+            nextButton.disabled = true;
+            nextButton.value = 'Failed 😔\uFE0E';
         }
-        
-        if (!decks.length)
-            throw 'Did not find any Decks. Not sure how this happened.';
-        
-        if (decks.length > 3)
-            throw ('Found too many Decks ('+decks.length+'), expected no more than 3.');
-        
-        decks[0].which = 'Main';
-        if (decks.length === 3)
-        {
-            decks[1].which = 'Extra';
-            decks[2].which = 'Side';
-        }
-        else if (decks.length === 2)
-        {
-            await window.CardIndexLoaded;
-            const extraDeckCards = window.CardIndex.TypeToCards.extra;
-            decks[1].which = (decks[1].cards.some(({current: {cardId}}) => !extraDeckCards.has(cardId)) ? 'Side' : 'Extra');
-        }
-        
-        CURRENT_DATA = decks;
-        
-        SetLoadingMessage('Processing...');
-        
-        await sleep(0);
-        
-        await VisualizeCurrentData();
-        document.body.className = 'state-neuronparse';
-    } catch (e) {
-        console.error(e);
-        Log(logger, ' ');
-        Log(logger, '='.repeat(20));
-        Log(logger, 'Failed:');
-        Log(logger, ''+e);
-        Log(logger, '='.repeat(20));
-        
-        nextButton.disabled = true;
-        nextButton.value = 'Failed 😔\uFE0E';
-        
-        document.body.className = 'state-neuronparse';
     }
+    document.body.className = 'state-neuronparse';
 };
 
 })();
