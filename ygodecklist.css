@@ -622,6 +622,13 @@ body.state-noscript, body.state-noasync
 #ocr-next { background: #0a0; }
 #ocr-next:disabled { background: #8a8; }
 
+#ocr-extra-buttons
+{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
 #namecorrect-box
 {
     display: flex;

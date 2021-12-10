@@ -580,6 +580,29 @@ nextButton.addEventListener('click', async () =>
     window.SetupDeckList('state-ocr', deckData);
 });
 
+document.getElementById('ocr-flip').addEventListener('click', () =>
+{
+    if (!CURRENT_PARSE_DATA)
+        return;
+    
+    {
+        const t = CURRENT_PARSE_DATA[3];
+        CURRENT_PARSE_DATA[3] = CURRENT_PARSE_DATA[4];
+        CURRENT_PARSE_DATA[4] = t;
+    }
+    
+    for (const card of CURRENT_PARSE_DATA[3].cards)
+    {
+        card.indexes = ['monster','spell','trap','extra'];
+        DoCardSearch(card);
+    }
+    for (const card of CURRENT_PARSE_DATA[4].cards)
+    {
+        card.indexes = ['extra'];
+        DoCardSearch(card);
+    }
+});
+
 
 const lumavg = (({width, data}, left, top, w, h) => {
     let sum = 0, n = 0;
