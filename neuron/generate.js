@@ -6,21 +6,6 @@ let DOWNLOAD = ((name, url) =>
     e.click();
 });
 
-const MASK = (async () =>
-{
-    const canvas = document.createElement('canvas');
-    canvas.width = 200;
-    canvas.height = 290;
-    const renderCtx = canvas.getContext('2d');
-    
-    const bmp = await createImageBitmap(await (await fetch('mask.png')).blob());
-    renderCtx.drawImage(bmp, 0, 0, 200, 290);
-    const mask = renderCtx.getImageData(25, 54, 150, 150);
-    bmp.close();
-    
-    return mask;
-})();
-
 const GetMissingArtwork = (async (cardId, knownArtworks) =>
 {
     let { artworks } = await (await fetch('https://db.ygorganization.com/data/card/'+cardId)).json();
@@ -31,7 +16,11 @@ const GetMissingArtwork = (async (cardId, knownArtworks) =>
         return [
             cardId,
             artId,
-            await createImageBitmap(await (await fetch('https://db.ygorganization.com/artwork/'+cardId+'/'+artId)).blob())
+            await createImageBitmap(
+                await 
+                    (await fetch('https://db.ygorganization.com/artwork/'+cardId+'/'+artId, {cache: 'reload'}))
+                .blob()
+            )
         ];
     }));
 });
@@ -91,14 +80,13 @@ startButton.addEventListener('click', async () =>
         statusElm.innerText = 'Requesting missing artwork...';
         const artworks = await Promise.all(promises);
         
-        const mask = await MASK;
         const nTotal = artworks.reduce((a,c) => a+c.length, 0);
         let nDone = 0;
         for (const arr of artworks)
         {
             for (const [cardId, artId, bitmap] of arr)
             {
-                const fingerprint = await CardFingerprint.Fingerprint(bitmap, null, null, null, null, mask);
+                const fingerprint = await CardFingerprint.Fingerprint(bitmap);
             
                 document.getElementById('bla').getContext('2d').drawImage(bitmap, 0, 0, 200, 290);
                 CardFingerprint.Visualize(document.getElementById('bla2'), fingerprint);

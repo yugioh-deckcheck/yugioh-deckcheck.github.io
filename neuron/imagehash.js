@@ -11,7 +11,7 @@ const BOUND = ((pxPerBox, extraPx, idx) => ((pxPerBox * idx) + Math.min(extraPx,
 
 window.ImageHash = {
     Distance: ((a,b) => { let s = 0; for (let i=0; i<8; ++i) s += BITCOUNT(a[i]^b[i]); return s; }),
-    Hash: ((imagedata, mask) =>
+    Hash: ((imagedata) =>
     {
         const width = imagedata.width;
         const height = imagedata.height;
@@ -43,26 +43,11 @@ window.ImageHash = {
                         const b = imagedata.data[i+2];
                         let lum = (r*.299 + g*.587 + b*.114);
                         
-                        if (mask) /* compensate for watermark */
-                        {
-                            const maskL = mask.data[i+0];
-                            const maskA = mask.data[i+3];
-                            if (maskA > .99)
-                                lum = 255-Math.min(255,(255-lum)/(1-(maskL/255)));
-                        }
-                        
                         l += lum;
                         n += 1;
                     }
                 }
                 l /= n;
-                
-                if (mask) /* compensate for sample watermark */
-                {
-                    const mod = mask[iX+','+iY];
-                    if (mod)
-                        l = 255-Math.min(255,(255-l)/(1-mod));
-                }
                 
                 pixels.push(l);
                 total += l;
