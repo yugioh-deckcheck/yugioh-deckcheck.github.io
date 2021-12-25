@@ -18,7 +18,7 @@ const GetMissingArtwork = (async (cardId, knownArtworks) =>
             artId,
             await createImageBitmap(
                 await 
-                    (await fetch('https://db.ygorganization.com/artwork/'+cardId+'/'+artId, {cache: 'reload'}))
+                    (await fetch('https://db.ygorganization.com/artwork/card/'+cardId+'/'+artId, {cache: 'reload'}))
                 .blob()
             )
         ];

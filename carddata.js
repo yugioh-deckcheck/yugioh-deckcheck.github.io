@@ -153,7 +153,7 @@ window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artw
     try
     {
         const img = new Image();
-        img.src = ('https://db.ygorganization.com/artwork/'+cardId+'/'+artId);
+        img.src = ('https://db.ygorganization.com/artwork/card/'+cardId+'/'+artId);
         for (let i=0; i<5; ++i)
         {
             try {
