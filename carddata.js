@@ -143,17 +143,19 @@ const _carddataCache = {};
 const _GetCardData = ((id) => fetch('https://db.ygorganization.com/data/card/'+id).then((r) => r.json()));
 window.GetCardData = ((id) => (_carddataCache[id] || (_carddataCache[id] = _GetCardData(id))));
 
+let _artworkManifest;
 const artworkBaton0 = new RequestThrottle(1);
 const artworkBaton1 = new RequestThrottle(1);
 const artworkCache = {};
 window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artworkCache[cardId+','+artId] = (async ()=>
 {
+    const manifest = await (_artworkManifest || (_artworkManifest = fetch('https://artworks.db.ygorganization.com/manifest.json').then(r => r.json())));
     const baton = ((cardId&1) ? artworkBaton1 : artworkBaton0);
     await baton.grab();
     try
     {
         const img = new Image();
-        img.src = ('https://db.ygorganization.com/artwork/card/'+cardId+'/'+artId);
+        img.src = ('https://artworks.db.ygorganization.com' + manifest.cards[cardId][artId].bestArt);
         for (let i=0; i<5; ++i)
         {
             try {
