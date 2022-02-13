@@ -149,13 +149,13 @@ const artworkBaton1 = new RequestThrottle(1);
 const artworkCache = {};
 window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artworkCache[cardId+','+artId] = (async ()=>
 {
-    const manifest = await (_artworkManifest || (_artworkManifest = fetch('https://artworks.db.ygorganization.com/manifest.json').then(r => r.json())));
+    const manifest = await (_artworkManifest || (_artworkManifest = fetch('https://artworks.ygorganization.com/manifest.json').then(r => r.json())));
     const baton = ((cardId&1) ? artworkBaton1 : artworkBaton0);
     await baton.grab();
     try
     {
         const img = new Image();
-        img.src = ('https://artworks.db.ygorganization.com' + manifest.cards[cardId][artId].bestArt);
+        img.src = ('https://artworks.ygorganization.com' + manifest.cards[cardId][artId].bestArt);
         for (let i=0; i<5; ++i)
         {
             try {
