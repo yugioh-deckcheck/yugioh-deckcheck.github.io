@@ -6,20 +6,20 @@ let DOWNLOAD = ((name, url) =>
     e.click();
 });
 
-const GetMissingArtwork = (async (cardId, knownArtworks) =>
+const GetMissingArtwork = (async (cardId, artworks, knownArtworks) =>
 {
-    let { artworks } = await (await fetch('https://db.ygorganization.com/data/card/'+cardId)).json();
     if (knownArtworks)
-        artworks = artworks.filter((artId) => !knownArtworks.has(artId));
-    return Promise.all(artworks.map(async (artId) => 
+        artworks = artworks.filter(([artId,data]) => !knownArtworks.has(artId));
+    return Promise.all(artworks.map(async ([artId,data]) => 
     {
+        const url = new URL(data.bestArt, 'https://artworks.ygorganization.com/').href;
+        if (!url.includes('neuron'))
+            return Promise.resolve([cardId, artId, null]);
         return [
             cardId,
             artId,
             await createImageBitmap(
-                await 
-                    (await fetch('https://db.ygorganization.com/artwork/card/'+cardId+'/'+artId, {cache: 'reload'}))
-                .blob()
+                await (await fetch(url, {cache: 'reload'})).blob()
             )
         ];
     }));
@@ -47,31 +47,23 @@ startButton.addEventListener('click', async () =>
         }
         
         statusElm.innerText = 'Fetching artwork count index...';
-        const artIndex = Object.entries(await (await fetch ('https://db.ygorganization.com/data/idx/card/artwork_count')).json());
+        const artIndex = Object.entries((await (await fetch ('https://artworks.ygorganization.com/manifest.json')).json()).cards);
         statusElm.innerText = 'Processing artwork count index...';
         await sleep(0);
         
-        let promises = null;
-        for (const [count, cards] of artIndex)
+        let promises = [];
+        for (const [cardId, artworksData] of artIndex)
         {
-            for (const cardId of cards)
-            {
-                if (cardId <= 0) continue;
-                const ourIdx = (cardIndex[cardId] && cardIndex[cardId].artworks);
-                if (ourIdx && (ourIdx.size >= count))
-                    continue;
-                const p = GetMissingArtwork(cardId, ourIdx);
-                if (promises)
-                    promises.push(p);
-                else
-                {
-                    try { promises = [await p]; }
-                    catch (e) { statusElm.innerText = 'You are not supposed to be here...'; return; }
-                }
-            }
+            if (cardId <= 0) continue;
+            const artworks = Object.entries(artworksData);
+            const ourIdx = (cardIndex[cardId] && cardIndex[cardId].artworks);
+            if (ourIdx && (ourIdx.size >= artworks.length))
+                continue;
+            const p = GetMissingArtwork(cardId, artworks, ourIdx);
+            promises.push(p);
         }
         
-        if (!promises)
+        if (!promises.length)
         {
             statusElm.innerText = 'Nothing to do here.';
             return;
@@ -86,14 +78,21 @@ startButton.addEventListener('click', async () =>
         {
             for (const [cardId, artId, bitmap] of arr)
             {
-                const fingerprint = await CardFingerprint.Fingerprint(bitmap);
-            
-                document.getElementById('bla').getContext('2d').drawImage(bitmap, 0, 0, 200, 290);
-                CardFingerprint.Visualize(document.getElementById('bla2'), fingerprint);
+                if (bitmap)
+                {
+                    const fingerprint = await CardFingerprint.Fingerprint(bitmap);
+                
+                    document.getElementById('bla').getContext('2d').drawImage(bitmap, 0, 0, 200, 290);
+                    CardFingerprint.Visualize(document.getElementById('bla2'), fingerprint);
+                    existing.push([cardId, artId, fingerprint]);
+                }
+                else
+                {
+                    console.warn('skipped (not neuron)', cardId, artId);
+                }
                 
                 ++nDone;
                 statusElm.innerText = (nDone+'/'+nTotal+' done ('+((nDone*100/nTotal).toFixed(2))+'%)');
-                existing.push([cardId, artId, fingerprint]);
                 await sleep(0);
             }
         }
