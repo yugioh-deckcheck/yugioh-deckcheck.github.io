@@ -16,8 +16,8 @@ const GetMissingArtwork = (async (cardId, artworks, knownArtworks) =>
         if (!url.includes('neuron'))
             return Promise.resolve([cardId, artId, null]);
         return [
-            cardId,
-            artId,
+            +cardId,
+            +artId,
             await createImageBitmap(
                 await (await fetch(url, {cache: 'reload'})).blob()
             )
