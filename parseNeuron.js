@@ -432,7 +432,7 @@ window.ParseNeuronExport = async function(file)
             
             SetLoadingMessage('Analyzing \''+NAME+'\'...');
             // ensure this actually gives us a render tick to avoid freezing
-            await Promise.all([EnsureScriptLoaded('neuron/cardident.js'), sleep(0)]);
+            await Promise.all([EnsureScriptLoaded('neuron/cardident.js').then(() => CardFingerprint.Ready()), sleep(0)]);
             
             let top = FIRST_HEADER_START + HEADER_HEIGHT;
             let decks = [];
@@ -468,7 +468,7 @@ window.ParseNeuronExport = async function(file)
                             break;
                         xLeft += offs;
                         
-                        const fingerprint = await CardFingerprint.Fingerprint(origCanvas, xLeft, yTop, CARD_WIDTH, CARD_HEIGHT);
+                        const fingerprint = CardFingerprint.Fingerprint(origCanvas, xLeft, yTop, CARD_WIDTH, CARD_HEIGHT);
                         await sleep(0); // prevent browser freezes
                         
                         const scores =

@@ -31,7 +31,8 @@ fingerprintCanvas.height = 290;
 let fingerprintCtx = fingerprintCanvas.getContext('2d');
 fingerprintCtx.imageSmoothingEnabled = false;
 window.CardFingerprint = {
-    Fingerprint: (async (image, sx, sy, sWidth, sHeight) =>
+    Ready: (() => EnsureScriptLoaded('/neuron/imagehash.js')),
+    Fingerprint: ((image, sx, sy, sWidth, sHeight) =>
     {
         fingerprintCtx.drawImage(image, sx || 0, sy || 0, sWidth || image.width, sHeight || image.height, 0, 0, 200, 290);
         
@@ -41,7 +42,6 @@ window.CardFingerprint = {
         
         const [attrR, attrG, attrB] = rgbAverage(fingerprintCtx.getImageData(164, 14, 20, 19));
         
-        await EnsureScriptLoaded('/neuron/imagehash.js');
         const hash = ImageHash.Hash(fingerprintCtx.getImageData(25, 54, 150, 150));
         
         return [[bgR, bgG, bgB], [attrR, attrG, attrB], hash];
