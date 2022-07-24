@@ -33,6 +33,7 @@ startButton.addEventListener('click', async () =>
     try
     {
         await EnsureScriptLoaded('/neuron/cardident.js');
+        await CardFingerprint.Ready();
         
         statusElm.innerText = 'Loading existing data...';
         const existing = await (await fetch('/neuron/imagedb.json')).json();
