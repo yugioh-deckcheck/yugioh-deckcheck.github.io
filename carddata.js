@@ -177,32 +177,53 @@ window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artw
 
 const passcodeBaton = new RequestThrottle(100);
 const GetPasscodes = (async (ids) =>
-{
-    const reverse = {};
-    const names = await Promise.all(ids.map(async (id) =>
-    {
-        const name = (await GetCardData(id)).cardData.en.name;
-        reverse[name] = id;
-        return name;
-    }));
-    
+{   
     const results = {};
     for (const id of ids)
         results[id] = null;
-
-    while (names.length)
+    
+    const reverse = {};
+    
+    for (let i=0; i<2; ++i)
     {
-        const thisNames = names.splice(-10,10);
-        await passcodeBaton.grab();
-        let apiData = null;
-        try
+        const names = (i == 0) ? (
+            // try #1 (canonical names)
+            await Promise.all(ids.map(async (id) =>
+            {
+                const name = (await GetCardData(id)).cardData.en.name;
+                reverse[name] = id;
+                return name;
+            }))
+          ) : (
+            // try #2 (alternate names)
+            [].concat(...(await Promise.all(ids.map(async (id) =>
+            {
+                if (results[id])
+                    return;
+                const names = (await GetCardData(id)).cardData.en.nameAliases;
+                if (!names)
+                    return;
+                for (const name of names)
+                    reverse[name] = id;
+                return names;
+            }))).filter((o)=>(o)))
+          );
+
+        while (names.length)
         {
-            apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
-        } finally { passcodeBaton.drop(); }
-        
-        if (apiData.data) for (const data of apiData.data)
-            results[reverse[data.name]] = data.id;
+            const thisNames = names.splice(-10,10);
+            await passcodeBaton.grab();
+            let apiData = null;
+            try
+            {
+                apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
+            } finally { passcodeBaton.drop(); }
+            
+            if (apiData.data) for (const data of apiData.data)
+                results[reverse[data.name]] = data.id;
+        }
     }
+    
     return results;
 });
 const passcodeCache = {};
