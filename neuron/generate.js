@@ -9,12 +9,12 @@ let DOWNLOAD = ((name, url) =>
 const GetMissingArtwork = (async (cardId, artworks, knownArtworks) =>
 {
     if (knownArtworks)
-        artworks = artworks.filter(([artId,data]) => !knownArtworks.has(artId));
+        artworks = artworks.filter(([artId,data]) => !knownArtworks.has(+artId));
     return Promise.all(artworks.map(async ([artId,data]) => 
     {
         const url = new URL(data.bestArt, 'https://artworks.ygorganization.com/').href;
         if (!url.includes('-n.artworks'))
-            return Promise.resolve([cardId, artId, null]);
+            return Promise.resolve([+cardId, +artId, null]);
         return [
             +cardId,
             +artId,
