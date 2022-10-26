@@ -36,7 +36,8 @@ startButton.addEventListener('click', async () =>
         await CardFingerprint.Ready();
         
         statusElm.innerText = 'Loading existing data...';
-        const existing = await (await fetch('/neuron/imagedb.json')).json();
+        const existingJSON = await (await fetch('/neuron/imagedb.json')).text();
+        const existing = JSON.parse(existingJSON);
         statusElm.innerText = 'Processing existing data...';
         await sleep(0);
         
@@ -75,6 +76,7 @@ startButton.addEventListener('click', async () =>
         
         const nTotal = artworks.reduce((a,c) => a+c.length, 0);
         let nDone = 0;
+        let entries = [];
         for (const arr of artworks)
         {
             for (const [cardId, artId, bitmap] of arr)
@@ -85,7 +87,7 @@ startButton.addEventListener('click', async () =>
                 
                     document.getElementById('bla').getContext('2d').drawImage(bitmap, 0, 0, 200, 290);
                     CardFingerprint.Visualize(document.getElementById('bla2'), fingerprint);
-                    existing.push([cardId, artId, fingerprint]);
+                    entries.push([cardId, artId, fingerprint]);
                 }
                 else
                 {
@@ -97,9 +99,19 @@ startButton.addEventListener('click', async () =>
                 await sleep(0);
             }
         }
-        statusElm.innerText = 'Done, offering download';
         
-        DOWNLOAD('imagedb.json', 'data:text/plain;charset=utf-8,'+encodeURIComponent(JSON.stringify(existing)+'\n'));
+        if (!entries.length) { statusElm.innerText = 'Done, unchanged.'; return; }
+            
+        statusElm.innerText = 'Done, offering download...';
+        
+        // this adds a line break before each batch of entries, and makes the resulting diffs nicer on git
+        const newJSON = JSON.stringify(entries);
+        const result = 
+            existingJSON.substring(0,existingJSON.length-2) /* strip the trailing ]\n */ +
+            ',' + newJSON.substring(1,newJSON.length-1) /* strip the outer braces */ +
+            '\n]\n';
+        try { JSON.parse(result); } catch (f) { console.warn(f); console.warn(result); throw 'Resulting patchwerk JSON not actually JSON, oops?'; }
+        DOWNLOAD('imagedb.json', 'data:text/plain;charset=utf-8,'+encodeURIComponent(result));
     } catch (e) {
         console.error(e);
         statusElm.innerText = ('Failed: '+e);
