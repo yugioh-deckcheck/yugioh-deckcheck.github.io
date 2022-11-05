@@ -155,7 +155,7 @@ window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artw
     try
     {
         const img = new Image();
-        img.src = ('https://artworks.ygorganization.com' + manifest.cards[cardId][artId].bestArt);
+        img.src = new URL(manifest.cards[cardId][artId].bestArt, 'https://artworks.ygorganization.com/').href;
         for (let i=0; i<5; ++i)
         {
             try {
