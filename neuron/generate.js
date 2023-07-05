@@ -36,7 +36,7 @@ startButton.addEventListener('click', async () =>
         await CardFingerprint.Ready();
         
         statusElm.innerText = 'Loading existing data...';
-        const existingJSON = await (await fetch('/neuron/imagedb.json')).text();
+        const existingJSON = await (await fetch('/neuron/imagedb.json', {cache: 'reload'})).text();
         const existing = JSON.parse(existingJSON);
         statusElm.innerText = 'Processing existing data...';
         await sleep(0);
