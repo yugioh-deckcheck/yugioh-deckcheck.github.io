@@ -38,7 +38,7 @@ const setBoxMatch = ((box, id) =>
 
     ScheduleBanlistCheck();
     
-    const background = ('url(https://db.ygorganization.com/artwork/card/'+id+'/1)');
+    const background = ('url(https://db.ygoresources.com/artwork/card/'+id+'/1)');
     switch (box.count)
     {
         case 1:

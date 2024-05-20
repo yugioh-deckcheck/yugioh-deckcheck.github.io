@@ -52,7 +52,7 @@ window.CardIndexLoaded = (async () =>
     
     // scope to help GC
     {
-        const extraIdxData = await (await fetch('https://db.ygorganization.com/data/idx/card/properties/en')).json();
+        const extraIdxData = await (await fetch('https://db.ygoresources.com/data/idx/card/properties/en')).json();
         for (const id of extraIdxData.Fusion) extraIdx.add(id);
         for (const id of extraIdxData.Synchro) extraIdx.add(id);
         for (const id of extraIdxData.Xyz) extraIdx.add(id);
@@ -61,7 +61,7 @@ window.CardIndexLoaded = (async () =>
     
     // scope to help GC
     {
-        const typeIdxData = await (await fetch('https://db.ygorganization.com/data/idx/card/cardType')).json();
+        const typeIdxData = await (await fetch('https://db.ygoresources.com/data/idx/card/cardType')).json();
         for (const id of typeIdxData.monster)
             if (!extraIdx.has(id))
                 monsterIdx.add(id);
@@ -73,7 +73,7 @@ window.CardIndexLoaded = (async () =>
 
     for (const locale of window.LOCALES)
     {
-        const nameIdx = Object.entries(await (await fetch('https://db.ygorganization.com/data/idx/card/name/'+locale)).json());
+        const nameIdx = Object.entries(await (await fetch('https://db.ygoresources.com/data/idx/card/name/'+locale)).json());
         for (const [name, ids] of nameIdx)
         {
             const id = ids.find((i) => (i > 0));
@@ -140,7 +140,7 @@ window.SearchDistanceScore = ((a,b,cutoff) =>
 });
 
 const _carddataCache = {};
-const _GetCardData = ((id) => fetch('https://db.ygorganization.com/data/card/'+id).then((r) => r.json()));
+const _GetCardData = ((id) => fetch('https://db.ygoresources.com/data/card/'+id).then((r) => r.json()));
 window.GetCardData = ((id) => (_carddataCache[id] || (_carddataCache[id] = _GetCardData(id))));
 
 let _artworkManifest;
@@ -149,13 +149,13 @@ const artworkBaton1 = new RequestThrottle(1);
 const artworkCache = {};
 window.GetArtwork = ((cardId, artId) => (artworkCache[cardId+','+artId] || (artworkCache[cardId+','+artId] = (async ()=>
 {
-    const manifest = await (_artworkManifest || (_artworkManifest = fetch('https://artworks.ygorganization.com/manifest.json').then(r => r.json())));
+    const manifest = await (_artworkManifest || (_artworkManifest = fetch('https://artworks.ygoresources.com/manifest.json').then(r => r.json())));
     const baton = ((cardId&1) ? artworkBaton1 : artworkBaton0);
     await baton.grab();
     try
     {
         const img = new Image();
-        img.src = new URL(manifest.cards[cardId][artId].bestArt, 'https://artworks.ygorganization.com/').href;
+        img.src = new URL(manifest.cards[cardId][artId].bestArt, 'https://artworks.ygoresources.com/').href;
         for (let i=0; i<5; ++i)
         {
             try {

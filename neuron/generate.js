@@ -12,7 +12,7 @@ const GetMissingArtwork = (async (cardId, artworks, knownArtworks) =>
         artworks = artworks.filter(([artId,data]) => !knownArtworks.has(+artId));
     return Promise.all(artworks.map(async ([artId,data]) => 
     {
-        const url = new URL(data.bestArt, 'https://artworks.ygorganization.com/').href;
+        const url = new URL(data.bestArt, 'https://artworks.ygoresources.com/').href;
         if (!url.includes('-n.ygorg'))
             return Promise.resolve([+cardId, +artId, null]);
         return [
@@ -49,7 +49,7 @@ startButton.addEventListener('click', async () =>
         }
         
         statusElm.innerText = 'Fetching artwork count index...';
-        const artIndex = Object.entries((await (await fetch ('https://artworks.ygorganization.com/manifest.json')).json()).cards);
+        const artIndex = Object.entries((await (await fetch ('https://artworks.ygoresources.com/manifest.json')).json()).cards);
         statusElm.innerText = 'Processing artwork count index...';
         await sleep(0);
         
