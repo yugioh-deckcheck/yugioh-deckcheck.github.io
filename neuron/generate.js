@@ -13,7 +13,7 @@ const GetMissingArtwork = (async (cardId, artworks, knownArtworks) =>
     return Promise.all(artworks.map(async ([artId,data]) => 
     {
         const url = new URL(data.bestArt, 'https://artworks.ygoresources.com/').href;
-        if (!url.includes('-n.ygorg'))
+        if (!url.includes('-n.ygores'))
             return Promise.resolve([+cardId, +artId, null]);
         return [
             +cardId,
