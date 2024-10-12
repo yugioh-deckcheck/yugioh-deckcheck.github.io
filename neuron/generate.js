@@ -61,6 +61,8 @@ startButton.addEventListener('click', async () =>
             const ourIdx = (cardIndex[cardId] && cardIndex[cardId].artworks);
             if (ourIdx && (ourIdx.size >= artworks.length))
                 continue;
+            // skip rush cards
+            try { if (artworks[0][1].bestArt.includes('-rn.ygores')) continue; } catch(e) {}
             const p = GetMissingArtwork(cardId, artworks, ourIdx);
             promises.push(p);
         }
