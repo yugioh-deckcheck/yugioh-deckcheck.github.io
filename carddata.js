@@ -52,11 +52,11 @@ window.CardIndexLoaded = (async () =>
     
     // scope to help GC
     {
-        const extraIdxData = await (await fetch('https://db.ygoresources.com/data/idx/card/properties/en')).json();
-        for (const id of extraIdxData.Fusion) extraIdx.add(id);
-        for (const id of extraIdxData.Synchro) extraIdx.add(id);
-        for (const id of extraIdxData.Xyz) extraIdx.add(id);
-        for (const id of extraIdxData.Link) extraIdx.add(id);
+        const extraIdxData = await (await fetch('https://db.ygoresources.com/data/idx/card/properties')).json();
+        /* Fusion */  for (const id of extraIdxData[11]) extraIdx.add(id);
+        /* Synchro */ for (const id of extraIdxData[19]) extraIdx.add(id);
+        /* Xyz */     for (const id of extraIdxData[18]) extraIdx.add(id);
+        /* Link */    for (const id of extraIdxData[23]) extraIdx.add(id);
     }
     
     // scope to help GC
@@ -184,43 +184,61 @@ const GetPasscodes = (async (ids) =>
     
     const reverse = {};
     
-    for (let i=0; i<2; ++i)
+    for (let i=0; i<3; ++i)
     {
-        const names = (i == 0) ? (
-            // try #1 (canonical names)
-            await Promise.all(ids.map(async (id) =>
-            {
-                const name = (await GetCardData(id)).cardData.en.name;
-                reverse[name] = id;
-                return name;
-            }))
-          ) : (
-            // try #2 (alternate names)
-            [].concat(...(await Promise.all(ids.map(async (id) =>
-            {
-                if (results[id])
-                    return;
-                const names = (await GetCardData(id)).cardData.en.nameAliases;
-                if (!names)
-                    return;
-                for (const name of names)
+        if (i == 0) {
+            // try #1 (konami id)
+            const remainingIds = ids.filter((id) => !results[id]);
+            while (remainingIds.length) {
+                const thisIds = remainingIds.splice(-10,10);
+                await passcodeBaton.grab();
+                let apiData = null;
+                try {
+                    apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?konami_id='+thisIds.join(',')+'&misc=yes')).json();
+                } finally { passcodeBaton.drop(); }
+                
+                if (apiData.data) for (const data of apiData.data)
+                    try { results[data.misc_info[0].konami_id] = data.id; } catch (e) { console.warn(e); }
+            }
+        } else {
+            const names = (i == 1) ? (
+                // try #2 (canonical names)
+                (await Promise.all(ids.map(async (id) =>
+                {
+                    if (results[id])
+                        return;
+                    const name = (await GetCardData(id)).cardData.en.name;
                     reverse[name] = id;
-                return names;
-            }))).filter((o)=>(o)))
-          );
+                    return name;
+                }))).filter((o)=>(o))
+              ) : (
+                // try #3 (alternate names)
+                [].concat(...(await Promise.all(ids.map(async (id) =>
+                {
+                    if (results[id])
+                        return;
+                    const names = (await GetCardData(id)).cardData.en.nameAliases;
+                    if (!names)
+                        return;
+                    for (const name of names)
+                        reverse[name] = id;
+                    return names;
+                }))).filter((o)=>(o)))
+              );
 
-        while (names.length)
-        {
-            const thisNames = names.splice(-10,10);
-            await passcodeBaton.grab();
-            let apiData = null;
-            try
+            while (names.length)
             {
-                apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
-            } finally { passcodeBaton.drop(); }
-            
-            if (apiData.data) for (const data of apiData.data)
-                results[reverse[data.name]] = data.id;
+                const thisNames = names.splice(-10,10);
+                await passcodeBaton.grab();
+                let apiData = null;
+                try
+                {
+                    apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
+                } finally { passcodeBaton.drop(); }
+                
+                if (apiData.data) for (const data of apiData.data)
+                    results[reverse[data.name]] = data.id;
+            }
         }
     }
     
