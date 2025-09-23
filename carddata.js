@@ -234,6 +234,7 @@ const GetPasscodes = (async (ids) =>
                 try
                 {
                     apiData = await (await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name='+encodeURIComponent(thisNames.join('|')))).json();
+                } catch(e) { console.error(e); throw ('Failed to communicate with YGOPRODeck:\n'+e); }
                 } finally { passcodeBaton.drop(); }
                 
                 if (apiData.data) for (const data of apiData.data)
