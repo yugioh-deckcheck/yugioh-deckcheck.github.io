@@ -1,8 +1,82 @@
 (()=>{
     
+let IMAGE_DB_PATCHED = 0;
+let IMAGE_DB_PATCH_FAILED = 0;
+
 const IMAGE_DB = (async () =>
 {
-    return (await fetch('neuron/imagedb.json')).json();
+    const imagedb = await (await fetch('neuron/imagedb.json')).json();
+
+    try
+    {
+        const known = new Set(imagedb.map(([cardId, artId]) => cardId+','+artId));
+        const missing = [];
+        const artIndex = (await (await fetch('https://artworks.ygoresources.com/manifest.json', {cache: 'reload'})).json()).cards;
+
+        for (const [cardId, artworks] of Object.entries(artIndex))
+        {
+            if (cardId <= 0) continue;
+
+            for (const [artId, data] of Object.entries(artworks))
+            {
+                if (!known.has(cardId+','+artId) && data.bestArt.includes('-n.ygores'))
+                    missing.push([+cardId, +artId, data.bestArt]);
+            }
+        }
+
+        if (missing.length)
+        {
+            await EnsureScriptLoaded('neuron/cardident.js');
+            await CardFingerprint.Ready();
+        }
+
+        SetLoadingMessage('Requesting missing artwork...');
+
+        const artworks = await Promise.all(missing.map(async ([cardId, artId, bestArt]) =>
+        {
+            try
+            {
+                const url = new URL(bestArt, 'https://artworks.ygoresources.com/').href;
+                return [cardId, artId, await createImageBitmap(
+                    await (await fetch(url, {cache: 'reload'})).blob()
+                )];
+            } catch (e) {
+                ++IMAGE_DB_PATCH_FAILED;
+                console.warn('Failed to download artwork', cardId, artId, e);
+                return [cardId, artId, null];
+            }
+        }));
+
+        let done = 0;
+        for (const [cardId, artId, bitmap] of artworks)
+        {
+            try
+            {
+                if (bitmap)
+                {
+                    imagedb.push([cardId, artId, await CardFingerprint.Fingerprint(bitmap)]);
+                    ++IMAGE_DB_PATCHED;
+                }
+            } catch (e) {
+                ++IMAGE_DB_PATCH_FAILED;
+                console.warn('Failed to fingerprint artwork', cardId, artId, e);
+            } finally {
+                if (bitmap) bitmap.close();
+            }
+
+            ++done;
+            SetLoadingMessage('Patching image DB: '+done+'/'+missing.length+
+                ' ('+(done*100/missing.length).toFixed(2)+'%)');
+            await sleep(0);
+        }
+    }
+    catch (e)
+    {
+        IMAGE_DB_PATCH_FAILED = -1;
+        console.warn('Failed to check for new artwork', e);
+    }
+
+    return imagedb;
 })();
 
 let CURRENT_DATA = null;
@@ -437,6 +511,14 @@ window.ParseNeuronExport = async function(file)
             let top = FIRST_HEADER_START + HEADER_HEIGHT;
             let decks = [];
             const imagedb = (await IMAGE_DB);
+            if (IMAGE_DB_PATCH_FAILED < 0) {
+                Log(logger, 'Image DB patch incomplete: '+IMAGE_DB_PATCHED+' image(s); using cached data.');
+            } else {
+                Log(logger, 'Image DB patch-fixed: '+IMAGE_DB_PATCHED+' image(s)'+
+                    (IMAGE_DB_PATCH_FAILED ? ' ('+IMAGE_DB_PATCH_FAILED+' failed)' : '')+'.');
+            }
+
+            SetLoadingMessage('Analyzing \''+NAME+'\'...');
             while (top+CARD_HEIGHT < height)
             {
                 let rows = 1;
